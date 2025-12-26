@@ -47,6 +47,12 @@ class Medicine(models.Model):
     class Meta:
         verbose_name = "药品信息"
         verbose_name_plural = verbose_name
+        indexes = [
+            # 为通用名建索引，加速搜索
+            models.Index(fields=['common_name'], name='idx_medicine_name'),
+            # 联合索引：如果经常按厂家找药，且按价格排序
+            models.Index(fields=['manufacturer', 'buy_price'], name='idx_manuf_price'),
+        ]
 
     def __str__(self):
         return f"{self.common_name} - {self.specification}"
