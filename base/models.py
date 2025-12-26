@@ -57,8 +57,9 @@ class Supplier(AddressInfo):
     name = models.CharField("供应商名称", max_length=100)
     contact_person = models.CharField("联系人", max_length=50)
     license_no = models.CharField("经营许可证号", max_length=50)
-    # 暂时简单处理多电话，用逗号分隔，后续再进一步改进
-    phone = models.CharField("联系电话", max_length=50, help_text="多个电话用逗号分隔")
+
+    # 删除旧的简单处理的多值属性
+    # phone = models.CharField("联系电话", max_length=50, help_text="多个电话用逗号分隔")
 
     class Meta:
         verbose_name = "供应商"
@@ -66,6 +67,32 @@ class Supplier(AddressInfo):
 
     def __str__(self):
         return self.name
+    
+# 创建一个新的模型 SupplierPhone，并通过外键关联到 Supplier
+class SupplierPhone(models.Model):
+    """
+    供应商联系电话表 (解决多值属性)
+    一个供应商可以有多个电话
+    """
+    # 电话类型选项
+    TYPE_CHOICES = [
+        ('mobile', '手机'),
+        ('office', '座机'),
+        ('fax', '传真'),
+        ('other', '其他'),
+    ]
+
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='phones', verbose_name="所属供应商")
+    number = models.CharField("电话号码", max_length=20)
+    type = models.CharField("类型", max_length=10, choices=TYPE_CHOICES, default='mobile')
+    note = models.CharField("备注", max_length=50, blank=True, help_text="如：紧急联系人")
+
+    class Meta:
+        verbose_name = "联系电话"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.get_type_display()}: {self.number}"
     
 
 class Customer(AddressInfo):
