@@ -32,6 +32,23 @@ class Employee(AbstractUser):
         self.is_staff = True
         super().save(*args, **kwargs)
 
+        # === 自动权限组管理 ===
+        if self.position:
+            # 1. 获取或创建当前职位对应的组 (使用 position 的 key 作为组名)
+            group, _ = Group.objects.get_or_create(name=self.position)
+            # 确保用户在当前职位的组中
+            self.groups.add(group)
+
+            # 2. 移除用户不再属于的职位组 (处理职位变更的情况)
+            for code, _ in self.POSITION_CHOICES:
+                if code != self.position:
+                    try:
+                        old_group = Group.objects.get(name=code)
+                        if old_group in self.groups.all():
+                            self.groups.remove(old_group)
+                    except Group.DoesNotExist:
+                        pass
+
 
 class ProxyGroup(Group):
     """
