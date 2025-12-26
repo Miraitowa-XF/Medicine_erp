@@ -32,6 +32,8 @@ class PurchaseOrder(models.Model):
             models.Index(fields=['order_date'], name='idx_purchase_date'),
             # 经常查某种状态的订单（如：只看 Pending 的）
             models.Index(fields=['status'], name='idx_purchase_status'),
+            # 联合索引：加速查询 "某供应商的某状态订单"
+            models.Index(fields=['supplier', 'status'], name='idx_purch_sup_status'),
         ]
 
     def __str__(self):
