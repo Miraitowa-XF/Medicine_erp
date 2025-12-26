@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import CheckConstraint, Q, F
 
 # 状态常量
 STATUS_CHOICES = [
@@ -26,6 +27,14 @@ class PurchaseOrder(models.Model):
         verbose_name = "进货单"
         verbose_name_plural = verbose_name
         ordering = ['-order_date']
+        indexes = [
+            # 经常查某个日期的订单
+            models.Index(fields=['order_date'], name='idx_purchase_date'),
+            # 经常查某种状态的订单（如：只看 Pending 的）
+            models.Index(fields=['status'], name='idx_purchase_status'),
+            # 联合索引：加速查询 "某供应商的某状态订单"
+            models.Index(fields=['supplier', 'status'], name='idx_purch_sup_status'),
+        ]
 
     def __str__(self):
         return f"PO-{self.id} | {self.supplier.name}"
@@ -48,6 +57,18 @@ class PurchaseDetail(models.Model):
     class Meta:
         verbose_name = "进货明细"
         verbose_name_plural = verbose_name
+        constraints = [
+            # 约束 1: 单价和数量必须 >= 0
+            CheckConstraint(
+                condition=Q(unit_price__gte=0) & Q(quantity__gte=0), 
+                name='check_purchase_price_qty_positive'
+            ),
+            # 约束 2: 有效期必须 > 生产日期 (这是数据库层面的逻辑校验！)
+            CheckConstraint(
+                condition=Q(expiry_date__gt=F('produce_date')), 
+                name='check_expiry_after_produce'
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         # 修正：增加空值判断，防止未填写时报错
@@ -76,6 +97,12 @@ class SalesOrder(models.Model):
         verbose_name = "销售单"
         verbose_name_plural = verbose_name
         ordering = ['-order_date']
+        indexes = [
+            # 经常查某个日期的订单
+            models.Index(fields=['order_date'], name='idx_sales_date'),
+            # 经常查某种状态的订单（如：只看 Pending 的）
+            models.Index(fields=['status'], name='idx_sales_status'),
+        ]
 
     def __str__(self):
         return f"SO-{self.id} | {self.customer.name}"
@@ -135,6 +162,12 @@ class SalesReturnOrder(models.Model):
         verbose_name = "销售退货单"
         verbose_name_plural = verbose_name
         ordering = ['-return_date']
+        indexes = [
+            # 经常查某个日期的订单
+            models.Index(fields=['return_date'], name='idx_sales_return_date'),
+            # 经常查某种状态的订单（如：只看 Pending 的）
+            models.Index(fields=['status'], name='idx_sales_return_status'),
+        ]
 
     def __str__(self):
         return f"SR-{self.id} | {self.customer.name}"
@@ -180,6 +213,12 @@ class PurchaseReturnOrder(models.Model):
         verbose_name = "采购退货单"
         verbose_name_plural = verbose_name
         ordering = ['-return_date']
+        indexes = [
+            # 经常查某个日期的订单
+            models.Index(fields=['return_date'], name='idx_purchase_return_date'),
+            # 经常查某种状态的订单（如：只看 Pending 的）
+            models.Index(fields=['status'], name='idx_purchase_return_status'),
+        ]
 
     def __str__(self):
         return f"PR-{self.id} | {self.supplier.name}"
