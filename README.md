@@ -1,3 +1,18 @@
+#### （可选）创建虚拟环境
+```
+# 创建虚拟环境 (可选，但在专业开发中推荐)
+python -m venv venv
+
+# 激活虚拟环境 (Windows)
+venv\Scripts\activate
+```
+
+#### 一键配置项目所有依赖项
+```
+pip install -r requirements.txt
+```
+
+
 #### 初始化数据库
 1. 生成迁移文件
    ```
@@ -46,4 +61,9 @@ python manage.py init_permissions
 它会创建5中不同的员工组，它们分别拥有不同的权限
 
 
-#### 下一步实现并发控制访问（正在进行中...）
+#### 已实现并发控制访问
+并发测试脚本：根目录下 `test_concurrency.py`
+执行测试脚本：
+```
+python test_concurrency.py
+```
