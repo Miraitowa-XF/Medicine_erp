@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}药品信息 - 医药ERP系统{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 药品信息
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">药品基础信息</h1>
+</div>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>通用名</th>
+                <th>规格</th>
+                <th>生产厂家</th>
+                <th>批准文号</th>
+                <th>指导进价</th>
+                <th>指导售价</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in medicines %}
+            <tr>
+                <td>{{ m.common_name }}</td>
+                <td>{{ m.specification }}</td>
+                <td>{{ m.manufacturer }}</td>
+                <td>{{ m.approval_number }}</td>
+                <td>¥{{ m.buy_price }}</td>
+                <td>¥{{ m.sell_price }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无药品信息
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
