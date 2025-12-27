@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}员工管理 - 医药ERP系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-bar {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .search-input {
+        flex: 1;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        background-color: #ffffff;
+    }
+    .search-btn {
+        padding: 0.6rem 1rem;
+        border-radius: 6px;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .role-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: #eff6ff;
+        color: #2563eb;
+    }
+    .inactive {
+        color: #991b1b;
+    }
+    .edit-link {
+        text-decoration: none;
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 员工管理
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">员工列表</h1>
+    <a href="{% url 'employee_create' %}" class="action-btn"><i class="fa-solid fa-user-plus"></i> 新增员工</a>
+</div>
+
+<form method="get" class="search-bar">
+    <input type="text" name="q" value="{{ q }}" class="search-input" placeholder="按用户名搜索…">
+    <button class="search-btn">搜索</button>
+</form>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>用户名</th>
+                <th>姓名</th>
+                <th>职位</th>
+                <th>手机号</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in employees %}
+            <tr>
+                <td>{{ e.username }}</td>
+                <td>{{ e.real_name }}</td>
+                <td><span class="role-badge">{{ e.get_position_display }}</span></td>
+                <td>{{ e.mobile|default:"-" }}</td>
+                <td>
+                    {% if e.is_active %}
+                        <span class="status-badge status-success">启用</span>
+                    {% else %}
+                        <span class="status-badge status-danger">停用</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a class="edit-link" href="{% url 'employee_edit' pk=e.id %}">编辑</a>
+                    &nbsp;|&nbsp;
+                    <a class="edit-link" href="{% url 'employee_password' pk=e.id %}">重置密码</a>
+                    &nbsp;|&nbsp;
+                    <form method="post" action="{% url 'employee_delete' pk=e.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" style="background:none;border:none;color:#dc2626;cursor:pointer;font-weight:500;">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align:center; color:#64748b; padding:2rem;">暂无员工数据</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

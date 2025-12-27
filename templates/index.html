@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<style>
+    /* 欢迎区域 */
+    .welcome-section {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        padding: 2.5rem;
+        border-radius: 16px;
+        margin-bottom: 2.5rem;
+        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .welcome-section::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 30%;
+        background: linear-gradient(to left, rgba(255,255,255,0.1), transparent);
+        transform: skewX(-20deg) translateX(50%);
+    }
+
+    .welcome-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .welcome-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    /* 快捷功能区标题 */
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .section-title::before {
+        content: '';
+        width: 4px;
+        height: 20px;
+        background-color: var(--primary-color);
+        border-radius: 2px;
+        display: block;
+    }
+
+    /* 卡片网格布局 */
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* 功能卡片样式 */
+    .card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-decoration: none;
+        color: var(--text-main);
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-color: transparent;
+    }
+
+    .card-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover .card-icon-wrapper {
+        transform: scale(1.1);
+    }
+
+    /* 图标颜色变体 */
+    .icon-blue { background-color: #eff6ff; color: #2563eb; }
+    .icon-green { background-color: #f0fdf4; color: #16a34a; }
+    .icon-orange { background-color: #fff7ed; color: #ea580c; }
+    .icon-red { background-color: #fef2f2; color: #dc2626; }
+    .icon-purple { background-color: #faf5ff; color: #9333ea; }
+    .icon-gray { background-color: #f8fafc; color: #64748b; }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .card-desc {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin: 0;
+        line-height: 1.5;
+        flex-grow: 1;
+    }
+
+    .arrow-icon {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        color: #cbd5e1;
+        transition: all 0.3s ease;
+    }
+
+    .card:hover .arrow-icon {
+        color: var(--primary-color);
+        transform: translateX(4px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome-section">
+    <h1 class="welcome-title">欢迎回来，{{ user.real_name|default:user.username }} 👋</h1>
+    <p class="welcome-subtitle">今天是 {% now "Y年m月d日" %}，祝您拥有高效的一天！</p>
+</div>
+
+<div class="section-title">工作台</div>
+<div class="grid">
+    <!-- 所有员工可见 -->
+    <a href="{% url 'change_password' %}" class="card">
+        <div class="card-icon-wrapper icon-gray">
+            <i class="fa-solid fa-key"></i>
+        </div>
+        <h3 class="card-title">修改密码</h3>
+        <p class="card-desc">定期更新个人密码，保障账户安全</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+
+    <!-- 管理员可见 -->
+    {% if user.position == 'manager' or user.is_superuser %}
+    <a href="{% url 'employee_list' %}" class="card">
+        <div class="card-icon-wrapper icon-blue">
+            <i class="fa-solid fa-users-gear"></i>
+        </div>
+        <h3 class="card-title">员工管理</h3>
+        <p class="card-desc">管理员工账户、职位分配及权限设置</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    <a href="/admin/" class="card">
+        <div class="card-icon-wrapper icon-blue">
+            <i class="fa-solid fa-cogs"></i>
+        </div>
+        <h3 class="card-title">系统后台</h3>
+        <p class="card-desc">进入完整管理后台进行全局配置</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
+    <!-- 采购员可见 -->
+    {% if user.position == 'purchaser' or user.position == 'manager' %}
+    <a href="{% url 'purchase_list' %}" class="card">
+        <div class="card-icon-wrapper icon-green">
+            <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <h3 class="card-title">采购订单</h3>
+        <p class="card-desc">创建新的采购申请，查询历史进货记录</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
+    <!-- 库管员可见 -->
+    {% if user.position == 'warehouse' or user.position == 'manager' %}
+    <a href="{% url 'medicine_list' %}" class="card">
+        <div class="card-icon-wrapper icon-orange">
+            <i class="fa-solid fa-boxes-stacked"></i>
+        </div>
+        <h3 class="card-title">药品库存</h3>
+        <p class="card-desc">实时查询药品库存、效期及入库盘点</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    <a href="{% url 'medicine_info_list' %}" class="card">
+        <div class="card-icon-wrapper icon-blue">
+            <i class="fa-solid fa-pills"></i>
+        </div>
+        <h3 class="card-title">药品信息</h3>
+        <p class="card-desc">查看药品基础信息（无编辑权限）</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
+    <!-- 销售员可见 -->
+    {% if user.position == 'sales' or user.position == 'manager' %}
+    <a href="{% url 'customer_list' %}" class="card">
+        <div class="card-icon-wrapper icon-red">
+            <i class="fa-solid fa-handshake"></i>
+        </div>
+        <h3 class="card-title">客户管理</h3>
+        <p class="card-desc">维护客户档案，记录销售流水</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
+    <!-- 财务可见 -->
+    {% if user.position == 'finance' or user.position == 'manager' %}
+    <a href="#" class="card">
+        <div class="card-icon-wrapper icon-purple">
+            <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <h3 class="card-title">财务报表</h3>
+        <p class="card-desc">查看销售统计、利润分析及资金流水</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
