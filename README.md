@@ -61,4 +61,9 @@ python manage.py init_permissions
 它会创建5中不同的员工组，它们分别拥有不同的权限
 
 
-#### 下一步实现并发控制访问（正在进行中...）
+#### 已实现并发控制访问
+并发测试脚本：根目录下 `test_concurrency.py`
+执行测试脚本：
+```
+python test_concurrency.py
+```
