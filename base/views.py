@@ -137,6 +137,7 @@ def inventory_create(request):
 # 库存编辑视图
 @login_required
 def inventory_edit(request, pk):
+
     if not request.user.has_perm('base.change_inventory'):
         messages.error(request, '无权限修改库存')
         return redirect('medicine_list')
