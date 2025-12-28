@@ -1,8 +1,7 @@
-<<<<<<< Updated upstream
+
 from django.shortcuts import render
 
 # Create your views here.
-=======
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -203,4 +202,4 @@ def medicine_info_list(request):
         'max_sell_price': max_sell_price,
     }
     return render(request, 'base/medicine_info_list.html', context)
->>>>>>> Stashed changes
+
