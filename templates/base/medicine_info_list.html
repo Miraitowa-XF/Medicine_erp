@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}药品信息 - 医药ERP系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-form {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+    .filter-form input {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+    }
+    .pagination {
+        margin-top: 1rem;
+        text-align: center;
+    }
+    .pagination a {
+        margin: 0 0.5rem;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 药品信息
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">药品基础信息</h1>
+</div>
+
+<!-- 搜索和筛选表单 -->
+<form method="get" class="filter-form">
+    <input type="text" name="search" placeholder="搜索通用名、规格、生产厂家、批准文号" value="{{ search_query }}">
+    <input type="number" step="0.01" name="min_buy_price" placeholder="最小进价" value="{{ min_buy_price }}">
+    <input type="number" step="0.01" name="max_buy_price" placeholder="最大进价" value="{{ max_buy_price }}">
+    <input type="number" step="0.01" name="min_sell_price" placeholder="最小售价" value="{{ min_sell_price }}">
+    <input type="number" step="0.01" name="max_sell_price" placeholder="最大售价" value="{{ max_sell_price }}">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'medicine_info_list' %}" class="btn btn-secondary">重置</a>
+</form>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>通用名</th>
+                <th>规格</th>
+                <th>生产厂家</th>
+                <th>批准文号</th>
+                <th>指导进价</th>
+                <th>指导售价</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in medicines %}
+            <tr>
+                <td>{{ m.common_name }}</td>
+                <td>{{ m.specification }}</td>
+                <td>{{ m.manufacturer }}</td>
+                <td>{{ m.approval_number }}</td>
+                <td>¥{{ m.buy_price }}</td>
+                <td>¥{{ m.sell_price }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无药品信息
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- 分页导航 -->
+    {% if medicines.has_other_pages %}
+    <div class="pagination">
+        {% if medicines.has_previous %}
+        <a href="?page=1&search={{ search_query }}&min_buy_price={{ min_buy_price }}&max_buy_price={{ max_buy_price }}&min_sell_price={{ min_sell_price }}&max_sell_price={{ max_sell_price }}">首页</a>
+        <a href="?page={{ medicines.previous_page_number }}&search={{ search_query }}&min_buy_price={{ min_buy_price }}&max_buy_price={{ max_buy_price }}&min_sell_price={{ min_sell_price }}&max_sell_price={{ max_sell_price }}">上一页</a>
+        {% endif %}
+        <span>第 {{ medicines.number }} 页，共 {{ medicines.paginator.num_pages }} 页</span>
+        {% if medicines.has_next %}
+        <a href="?page={{ medicines.next_page_number }}&search={{ search_query }}&min_buy_price={{ min_buy_price }}&max_buy_price={{ max_buy_price }}&min_sell_price={{ min_sell_price }}&max_sell_price={{ max_sell_price }}">下一页</a>
+        <a href="?page={{ medicines.paginator.num_pages }}&search={{ search_query }}&min_buy_price={{ min_buy_price }}&max_buy_price={{ max_buy_price }}&min_sell_price={{ min_sell_price }}&max_sell_price={{ max_sell_price }}">末页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
