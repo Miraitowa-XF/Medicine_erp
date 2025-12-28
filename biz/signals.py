@@ -1,7 +1,8 @@
-from django.db.models.signals import pre_save, post_save, post_delete
-from django.dispatch import receiver
-from django.db.models import Sum
 from django.db import transaction
+from django.db.models import F, Sum
+from django.dispatch import receiver
+from django.db.models.signals import pre_save, post_save, post_delete
+from django.utils import timezone
 from base.models import Inventory
 from .models import (
     PurchaseOrder, PurchaseDetail,
@@ -11,11 +12,8 @@ from .models import (
 )
 
 # ==========================================
-# 核心修复：状态变更检测 (通用逻辑)
+# 1. 状态变更检测
 # ==========================================
-
-# 将四个单据模型打包，统一监听
-OrderModels = [PurchaseOrder, SalesOrder, SalesReturnOrder, PurchaseReturnOrder]
 
 @receiver(pre_save, sender=PurchaseOrder)
 @receiver(pre_save, sender=SalesOrder)
@@ -23,90 +21,133 @@ OrderModels = [PurchaseOrder, SalesOrder, SalesReturnOrder, PurchaseReturnOrder]
 @receiver(pre_save, sender=PurchaseReturnOrder)
 def check_status_transition(sender, instance, **kwargs):
     """
-    在保存之前执行：
     检查单据是否是从 '其他状态' 变成了 'approved'。
-    我们将结果存在 instance 的一个临时属性 _is_newly_approved 中，
-    供后面的 post_save 使用。
     """
-    # 如果没有主键(pk)，说明是新创建的单据
     if not instance.pk:
-        # 如果一创建就是 approved (虽然很少见)，标记为 True
         instance._is_newly_approved = (instance.status == 'approved')
     else:
-        # 如果是修改已有单据，去数据库里查一下“旧的状态”是什么
         try:
             old_instance = sender.objects.get(pk=instance.pk)
-            # 只有当：旧状态不是approved 且 新状态是approved 时，才算“新批准”
             instance._is_newly_approved = (old_instance.status != 'approved' and instance.status == 'approved')
         except sender.DoesNotExist:
             instance._is_newly_approved = False
 
 # ==========================================
-# 库存更新逻辑 (修正版)
+# 2. 并发安全的核心库存操作函数
 # ==========================================
 
-# 1. 进货审核 -> 增加库存
+def _safe_add_inventory(detail_item):
+    """
+    【并发安全】增加库存
+    适用：进货、销售退货
+    原理：使用 select_for_update 锁定行 + F表达式更新
+    """
+    # 必须在事务内使用锁
+    with transaction.atomic():
+        # 1. 尝试获取锁。我们不能直接用 get_or_create，因为它无法在 get 时加锁
+        # 先尝试查询并锁定
+        inventory_qs = Inventory.objects.select_for_update().filter(
+            medicine=detail_item.medicine,
+            batch_number=detail_item.batch_number
+        )
+        
+        if inventory_qs.exists():
+            # 如果存在，这行记录现在被锁住了，其他线程无法修改，直到我这里事务结束
+            inventory = inventory_qs.first()
+        else:
+            # 如果不存在，创建新记录
+            # 这里的 expiry_date 处理是为了兼容销售退货（明细里可能没有效期字段）
+            expiry = getattr(detail_item, 'expiry_date', None)
+            if not expiry:
+                # 如果是退货且没有效期，尝试去 Medicine 或设默认值（视业务逻辑而定，这里简化处理）
+                expiry = timezone.now().date()
+
+            inventory = Inventory.objects.create(
+                medicine=detail_item.medicine,
+                batch_number=detail_item.batch_number,
+                expiry_date=expiry,
+                quantity=0
+            )
+            # 重新加锁读取，确保万无一失
+            inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
+        
+        # 2. 使用 F 表达式进行数据库层面的原子加法
+        # 即使锁失效（极低概率），F() 也能保证是在当前数据库值基础上 +n
+        inventory.quantity = F('quantity') + detail_item.quantity
+        inventory.save()
+        
+        # 刷新对象以获取更新后的数值用于打印
+        inventory.refresh_from_db()
+        print(f"【并发安全加】{inventory.medicine.common_name} [{inventory.batch_number}] 库存变为: {inventory.quantity}")
+
+
+def _safe_deduct_inventory(detail_item):
+    """
+    【并发安全】扣减库存
+    适用：销售、采购退货
+    原理：select_for_update 锁定 -> 检查余额 -> F表达式扣减
+    """
+    with transaction.atomic():
+        # 1. 极其重要：不能直接使用 detail_item.inventory
+        # 因为 detail_item.inventory 是内存里的缓存对象，没有锁。
+        # 我们必须用 ID 重新去数据库里【锁定】这行记录。
+        try:
+            inventory = Inventory.objects.select_for_update().get(pk=detail_item.inventory.pk)
+        except Inventory.DoesNotExist:
+            raise ValueError(f"库存记录不存在: {detail_item.inventory}")
+
+        # 2. 在锁的保护下检查库存（此时没人能修改它）
+        if inventory.quantity < detail_item.quantity:
+            # 抛出异常会触发事务回滚，单据状态保存会被撤销
+            raise ValueError(
+                f"并发拦截：库存不足！商品: {inventory.medicine.common_name}, "
+                f"当前余: {inventory.quantity}, 需要: {detail_item.quantity}"
+            )
+
+        # 3. 原子扣减
+        inventory.quantity = F('quantity') - detail_item.quantity
+        inventory.save()
+        
+        inventory.refresh_from_db()
+        print(f"【并发安全减】{inventory.medicine.common_name} [{inventory.batch_number}] 库存变为: {inventory.quantity}")
+
+
+# ==========================================
+# 3. 信号监听器 (调用上面的安全函数)
+# ==========================================
+
+# --- 1. 进货审核 -> 增加库存 ---
 @receiver(post_save, sender=PurchaseOrder)
 def stock_in_purchase(sender, instance, **kwargs):
-    # 修正：检查临时标记，只有“刚刚变成Approved”时才执行
     if getattr(instance, '_is_newly_approved', False):
-        with transaction.atomic():
-            for item in instance.details.all():
-                inventory, created = Inventory.objects.get_or_create(
-                    medicine=item.medicine,
-                    batch_number=item.batch_number,
-                    defaults={
-                        'expiry_date': item.expiry_date,
-                        'quantity': 0
-                    }
-                )
-                inventory.quantity += item.quantity
-                inventory.save()
-                print(f"【进货生效】库存更新: {inventory} +{item.quantity}")
+        # 遍历所有明细，依次执行安全加法
+        for item in instance.details.all():
+            _safe_add_inventory(item)
 
-# 2. 销售审核 -> 扣减库存
+# --- 2. 销售审核 -> 扣减库存 ---
 @receiver(post_save, sender=SalesOrder)
 def stock_out_sales(sender, instance, **kwargs):
     if getattr(instance, '_is_newly_approved', False):
-        with transaction.atomic():
-            for item in instance.details.all():
-                inventory = item.inventory
-                if inventory.quantity < item.quantity:
-                    # 注意：如果库存不足，这里抛出异常会回滚事务，保存失败
-                    raise ValueError(f"库存不足: {inventory} 剩余 {inventory.quantity}, 需要 {item.quantity}")
-                
-                inventory.quantity -= item.quantity
-                inventory.save()
-                print(f"【销售生效】库存更新: {inventory} -{item.quantity}")
+        # 遍历所有明细，依次执行安全扣减
+        for item in instance.details.all():
+            _safe_deduct_inventory(item)
 
-# 3. 销售退货审核 -> 增加库存 (回滚)
+# --- 3. 销售退货审核 -> 增加库存 (回滚) ---
 @receiver(post_save, sender=SalesReturnOrder)
 def stock_in_sales_return(sender, instance, **kwargs):
     if getattr(instance, '_is_newly_approved', False):
-        with transaction.atomic():
-            for item in instance.details.all():
-                inventory = item.inventory
-                inventory.quantity += item.quantity
-                inventory.save()
-                print(f"【销售退货生效】库存更新: {inventory} +{item.quantity}")
+        for item in instance.details.all():
+            _safe_add_inventory(item)
 
-# 4. 采购退货审核 -> 扣减库存
+# --- 4. 采购退货审核 -> 扣减库存 ---
 @receiver(post_save, sender=PurchaseReturnOrder)
 def stock_out_purchase_return(sender, instance, **kwargs):
     if getattr(instance, '_is_newly_approved', False):
-        with transaction.atomic():
-            for item in instance.details.all():
-                inventory = item.inventory
-                if inventory.quantity < item.quantity:
-                    raise ValueError(f"退货失败，库存不足: {inventory}")
-                
-                inventory.quantity -= item.quantity
-                inventory.save()
-                print(f"【采购退货生效】库存更新: {inventory} -{item.quantity}")
+        for item in instance.details.all():
+            _safe_deduct_inventory(item)
 
 # ==========================================
-# 自动计算总金额 (Total Amount) 逻辑
-# 注意：金额计算不需要限制“只执行一次”，每次修改明细都应该重算
+# 4. 自动计算总金额 (保持原有逻辑)
 # ==========================================
 
 def update_order_total(order_model, order_instance):
