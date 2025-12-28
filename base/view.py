@@ -1,204 +1,140 @@
+{% extends 'base.html' %}
 
-from django.shortcuts import render
+{% block title %}药品库存 - 医药ERP系统{% endblock %}
 
-# Create your views here.
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django import forms
-from .models import Inventory, Customer, Medicine
-from django.utils import timezone
-from datetime import timedelta, date
-from django.db import IntegrityError
-from django.db.models import Q
-from django.core.paginator import Paginator
-
-@login_required
-def medicine_list(request):
-    """药品库存列表视图"""
-    queryset = Inventory.objects.select_related('medicine')
-    
-    # 搜索参数
-    search_query = request.GET.get('search', '')
-    if search_query:
-        queryset = queryset.filter(
-            Q(medicine__common_name__icontains=search_query) |
-            Q(medicine__manufacturer__icontains=search_query) |
-            Q(batch_number__icontains=search_query)
-        )
-    
-    # 筛选参数
-    min_quantity = request.GET.get('min_quantity')
-    max_quantity = request.GET.get('max_quantity')
-    if min_quantity:
-        queryset = queryset.filter(quantity__gte=min_quantity)
-    if max_quantity:
-        queryset = queryset.filter(quantity__lte=max_quantity)
-    
-    expiry_start = request.GET.get('expiry_start')
-    expiry_end = request.GET.get('expiry_end')
-    if expiry_start:
-        queryset = queryset.filter(expiry_date__gte=expiry_start)
-    if expiry_end:
-        queryset = queryset.filter(expiry_date__lte=expiry_end)
-    
-    # 分页
-    paginator = Paginator(queryset.order_by('medicine__common_name', 'expiry_date'), 20)
-    page_number = request.GET.get('page')
-    inventory_items = paginator.get_page(page_number)
-    
-    # 简单的临期判断逻辑 (未来3个月内过期)
-    today = timezone.now().date()
-    warning_date = today + timedelta(days=90)
-    
-    for item in inventory_items:
-        item.is_expiring_soon = item.expiry_date <= warning_date
-        
-    context = {
-        'inventory_items': inventory_items,
-        'search_query': search_query,
-        'min_quantity': min_quantity,
-        'max_quantity': max_quantity,
-        'expiry_start': expiry_start,
-        'expiry_end': expiry_end,
+{% block extra_css %}
+<style>
+    .inline-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
     }
-    return render(request, 'base/medicine_list.html', context)
-
-# 客户列表视图
-@login_required
-def customer_list(request):
-    customers = Customer.objects.all().order_by('name')
-    context = {
-        'customers': customers,
+    .link-btn {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
     }
-    return render(request, 'base/customer_list.html', context)
-
-# 库存调整表单
-class InventoryAdjustForm(forms.Form):
-    delta = forms.IntegerField(label='调整数量')
-
-# 库存新增/编辑表单 
-class InventoryForm(forms.ModelForm):
-    class Meta:
-        model = Inventory
-        fields = ['medicine', 'batch_number', 'expiry_date', 'quantity']
-        widgets = {
-            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
-        }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        try:
-            self.fields['expiry_date'].widget.attrs['min'] = date.today().isoformat()
-        except Exception:
-            pass
-
-# 库存调整视图
-@login_required
-def inventory_adjust(request, pk):
-    if not request.user.has_perm('base.change_inventory'):
-        messages.error(request, '无权限调整库存')
-        return redirect('medicine_list')
-    item = get_object_or_404(Inventory.objects.select_related('medicine'), pk=pk)
-    if request.method == 'POST':
-        form = InventoryAdjustForm(request.POST)
-        if form.is_valid():
-            delta = form.cleaned_data['delta']
-            new_qty = item.quantity + delta
-            if new_qty < 0:
-                messages.error(request, '调整后数量不能为负数')
-            else:
-                item.quantity = new_qty
-                item.save()
-                messages.success(request, '库存已更新')
-                return redirect('medicine_list')
-    else:
-        form = InventoryAdjustForm()
-    return render(request, 'base/inventory_adjust.html', {'item': item, 'form': form})
-
-# 库存新增视图
-@login_required
-def inventory_create(request):
-    if not request.user.has_perm('base.add_inventory'):
-        messages.error(request, '无权限新增库存')
-        return redirect('medicine_list')
-    if request.method == 'POST':
-        form = InventoryForm(request.POST)
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, '库存批次已新增')
-                return redirect('medicine_list')
-            except IntegrityError:
-                form.add_error('batch_number', '同药品批号已存在')
-    else:
-        form = InventoryForm()
-    return render(request, 'base/inventory_form.html', {'form': form, 'is_edit': False})
-
-# 库存编辑视图
-@login_required
-def inventory_edit(request, pk):
-    if not request.user.has_perm('base.change_inventory'):
-        messages.error(request, '无权限修改库存')
-        return redirect('medicine_list')
-    item = get_object_or_404(Inventory, pk=pk)
-    if request.method == 'POST':
-        form = InventoryForm(request.POST, instance=item)
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, '库存批次已更新')
-                return redirect('medicine_list')
-            except IntegrityError:
-                form.add_error('batch_number', '同药品批号已存在')
-    else:
-        form = InventoryForm(instance=item)
-    return render(request, 'base/inventory_form.html', {'form': form, 'is_edit': True, 'item': item})
-
-# 药品信息列表视图
-@login_required
-def medicine_info_list(request):
-    if not request.user.has_perm('base.view_medicine'):
-        messages.error(request, '无权限查看药品信息')
-        return redirect('index')
-    
-    queryset = Medicine.objects.all()
-    
-    # 搜索参数
-    search_query = request.GET.get('search', '')
-    if search_query:
-        queryset = queryset.filter(
-            Q(common_name__icontains=search_query) |
-            Q(specification__icontains=search_query) |
-            Q(manufacturer__icontains=search_query) |
-            Q(approval_number__icontains=search_query)
-        )
-    
-    # 筛选参数
-    min_buy_price = request.GET.get('min_buy_price')
-    max_buy_price = request.GET.get('max_buy_price')
-    if min_buy_price:
-        queryset = queryset.filter(buy_price__gte=min_buy_price)
-    if max_buy_price:
-        queryset = queryset.filter(buy_price__lte=max_buy_price)
-    
-    min_sell_price = request.GET.get('min_sell_price')
-    max_sell_price = request.GET.get('max_sell_price')
-    if min_sell_price:
-        queryset = queryset.filter(sell_price__gte=min_sell_price)
-    if max_sell_price:
-        queryset = queryset.filter(sell_price__lte=max_sell_price)
-    
-    # 分页
-    paginator = Paginator(queryset.order_by('common_name', 'manufacturer'), 20)
-    page_number = request.GET.get('page')
-    medicines = paginator.get_page(page_number)
-    
-    context = {
-        'medicines': medicines,
-        'search_query': search_query,
-        'min_buy_price': min_buy_price,
-        'max_buy_price': max_buy_price,
-        'min_sell_price': min_sell_price,
-        'max_sell_price': max_sell_price,
+    .link-btn:hover { color: #1d4ed8; }
+    .filter-form {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
     }
-    return render(request, 'base/medicine_info_list.html', context)
+    .filter-form input {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+    }
+    .pagination {
+        margin-top: 1rem;
+        text-align: center;
+    }
+    .pagination a {
+        margin: 0 0.5rem;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 药品库存
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">药品库存列表</h1>
+    <div class="inline-actions">
+        <a class="link-btn" href="{% url 'medicine_info_list' %}"><i class="fa-solid fa-pills"></i> 药品信息</a>
+        {% if perms.base.add_inventory %}
+        <a class="link-btn" href="{% url 'inventory_create' %}"><i class="fa-solid fa-plus"></i> 新增库存批次</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 搜索和筛选表单 -->
+<form method="get" class="filter-form">
+    <input type="text" name="search" placeholder="搜索药品名、厂家、批号" value="{{ search_query }}">
+    <input type="number" name="min_quantity" placeholder="最小库存数量" value="{{ min_quantity }}">
+    <input type="number" name="max_quantity" placeholder="最大库存数量" value="{{ max_quantity }}">
+    <input type="date" name="expiry_start" placeholder="有效期开始" value="{{ expiry_start }}">
+    <input type="date" name="expiry_end" placeholder="有效期结束" value="{{ expiry_end }}">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'medicine_list' %}" class="btn btn-secondary">重置</a>
+</form>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>药品名称</th>
+                <th>规格</th>
+                <th>生产厂家</th>
+                <th>批号</th>
+                <th>有效期</th>
+                <th>库存数量</th>
+                <th>指导售价</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in inventory_items %}
+            <tr>
+                <td>{{ item.medicine.common_name }}</td>
+                <td>{{ item.medicine.specification }}</td>
+                <td>{{ item.medicine.manufacturer }}</td>
+                <td>{{ item.batch_number }}</td>
+                <td>
+                    {{ item.expiry_date|date:"Y-m-d" }}
+                    {% if item.is_expiring_soon %}
+                    <span class="status-badge status-warning">临期</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ item.quantity }}
+                    {% if item.quantity < 10 %}
+                    <span class="status-badge status-danger">缺货</span>
+                    {% endif %}
+                </td>
+                <td>¥{{ item.medicine.sell_price }}</td>
+                <td>
+                    {% if perms.base.change_inventory %}
+                    <a class="link-btn" href="{% url 'inventory_adjust' pk=item.id %}"><i class="fa-solid fa-rotate"></i> 调整库存</a>
+                    &nbsp;|&nbsp;
+                    <a class="link-btn" href="{% url 'inventory_edit' pk=item.id %}"><i class="fa-solid fa-pen-to-square"></i> 编辑库存</a>
+                    {% else %}
+                    <span style="color:#94a3b8;">无权限</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无库存记录
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- 分页导航 -->
+    {% if inventory_items.has_other_pages %}
+    <div class="pagination">
+        {% if inventory_items.has_previous %}
+        <a href="?page=1&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">首页</a>
+        <a href="?page={{ inventory_items.previous_page_number }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">上一页</a>
+        {% endif %}
+        <span>第 {{ inventory_items.number }} 页，共 {{ inventory_items.paginator.num_pages }} 页</span>
+        {% if inventory_items.has_next %}
+        <a href="?page={{ inventory_items.next_page_number }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">下一页</a>
+        <a href="?page={{ inventory_items.paginator.num_pages }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">末页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
