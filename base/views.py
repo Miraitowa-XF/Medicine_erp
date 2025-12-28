@@ -202,3 +202,4 @@ def medicine_info_list(request):
         'max_sell_price': max_sell_price,
     }
     return render(request, 'base/medicine_info_list.html', context)
+
