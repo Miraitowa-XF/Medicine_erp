@@ -15,6 +15,30 @@
         font-weight: 500;
     }
     .link-btn:hover { color: #1d4ed8; }
+    .filter-form {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+    .filter-form input {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.25rem;
+    }
+    .pagination {
+        margin-top: 1rem;
+        text-align: center;
+    }
+    .pagination a {
+        margin: 0 0.5rem;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
 </style>
 {% endblock %}
 
@@ -32,6 +56,17 @@
         {% endif %}
     </div>
 </div>
+
+<!-- 搜索和筛选表单 -->
+<form method="get" class="filter-form">
+    <input type="text" name="search" placeholder="搜索药品名、厂家、批号" value="{{ search_query }}">
+    <input type="number" name="min_quantity" placeholder="最小库存数量" value="{{ min_quantity }}">
+    <input type="number" name="max_quantity" placeholder="最大库存数量" value="{{ max_quantity }}">
+    <input type="date" name="expiry_start" placeholder="有效期开始" value="{{ expiry_start }}">
+    <input type="date" name="expiry_end" placeholder="有效期结束" value="{{ expiry_end }}">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'medicine_list' %}" class="btn btn-secondary">重置</a>
+</form>
 
 <div class="data-table-wrapper">
     <table class="data-table">
@@ -86,5 +121,20 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    <!-- 分页导航 -->
+    {% if inventory_items.has_other_pages %}
+    <div class="pagination">
+        {% if inventory_items.has_previous %}
+        <a href="?page=1&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">首页</a>
+        <a href="?page={{ inventory_items.previous_page_number }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">上一页</a>
+        {% endif %}
+        <span>第 {{ inventory_items.number }} 页，共 {{ inventory_items.paginator.num_pages }} 页</span>
+        {% if inventory_items.has_next %}
+        <a href="?page={{ inventory_items.next_page_number }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">下一页</a>
+        <a href="?page={{ inventory_items.paginator.num_pages }}&search={{ search_query }}&min_quantity={{ min_quantity }}&max_quantity={{ max_quantity }}&expiry_start={{ expiry_start }}&expiry_end={{ expiry_end }}">末页</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
