@@ -1,3 +1,7 @@
+
+from django.shortcuts import render
+
+# Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,12 +10,42 @@ from .models import Inventory, Customer, Medicine
 from django.utils import timezone
 from datetime import timedelta, date
 from django.db import IntegrityError
+from django.db.models import Q
+from django.core.paginator import Paginator
 
 @login_required
 def medicine_list(request):
     """药品库存列表视图"""
-    # 获取所有库存记录，并预加载关联的 Medicine 数据以减少数据库查询
-    inventory_items = Inventory.objects.select_related('medicine').all().order_by('medicine__common_name', 'expiry_date')
+    queryset = Inventory.objects.select_related('medicine')
+    
+    # 搜索参数
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(medicine__common_name__icontains=search_query) |
+            Q(medicine__manufacturer__icontains=search_query) |
+            Q(batch_number__icontains=search_query)
+        )
+    
+    # 筛选参数
+    min_quantity = request.GET.get('min_quantity')
+    max_quantity = request.GET.get('max_quantity')
+    if min_quantity:
+        queryset = queryset.filter(quantity__gte=min_quantity)
+    if max_quantity:
+        queryset = queryset.filter(quantity__lte=max_quantity)
+    
+    expiry_start = request.GET.get('expiry_start')
+    expiry_end = request.GET.get('expiry_end')
+    if expiry_start:
+        queryset = queryset.filter(expiry_date__gte=expiry_start)
+    if expiry_end:
+        queryset = queryset.filter(expiry_date__lte=expiry_end)
+    
+    # 分页
+    paginator = Paginator(queryset.order_by('medicine__common_name', 'expiry_date'), 20)
+    page_number = request.GET.get('page')
+    inventory_items = paginator.get_page(page_number)
     
     # 简单的临期判断逻辑 (未来3个月内过期)
     today = timezone.now().date()
@@ -22,6 +56,11 @@ def medicine_list(request):
         
     context = {
         'inventory_items': inventory_items,
+        'search_query': search_query,
+        'min_quantity': min_quantity,
+        'max_quantity': max_quantity,
+        'expiry_start': expiry_start,
+        'expiry_end': expiry_end,
     }
     return render(request, 'base/medicine_list.html', context)
 
@@ -121,5 +160,45 @@ def medicine_info_list(request):
     if not request.user.has_perm('base.view_medicine'):
         messages.error(request, '无权限查看药品信息')
         return redirect('index')
-    medicines = Medicine.objects.all().order_by('common_name', 'manufacturer')
-    return render(request, 'base/medicine_info_list.html', {'medicines': medicines})
+    
+    queryset = Medicine.objects.all()
+    
+    # 搜索参数
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(common_name__icontains=search_query) |
+            Q(specification__icontains=search_query) |
+            Q(manufacturer__icontains=search_query) |
+            Q(approval_number__icontains=search_query)
+        )
+    
+    # 筛选参数
+    min_buy_price = request.GET.get('min_buy_price')
+    max_buy_price = request.GET.get('max_buy_price')
+    if min_buy_price:
+        queryset = queryset.filter(buy_price__gte=min_buy_price)
+    if max_buy_price:
+        queryset = queryset.filter(buy_price__lte=max_buy_price)
+    
+    min_sell_price = request.GET.get('min_sell_price')
+    max_sell_price = request.GET.get('max_sell_price')
+    if min_sell_price:
+        queryset = queryset.filter(sell_price__gte=min_sell_price)
+    if max_sell_price:
+        queryset = queryset.filter(sell_price__lte=max_sell_price)
+    
+    # 分页
+    paginator = Paginator(queryset.order_by('common_name', 'manufacturer'), 20)
+    page_number = request.GET.get('page')
+    medicines = paginator.get_page(page_number)
+    
+    context = {
+        'medicines': medicines,
+        'search_query': search_query,
+        'min_buy_price': min_buy_price,
+        'max_buy_price': max_buy_price,
+        'min_sell_price': min_sell_price,
+        'max_sell_price': max_sell_price,
+    }
+    return render(request, 'base/medicine_info_list.html', context)
