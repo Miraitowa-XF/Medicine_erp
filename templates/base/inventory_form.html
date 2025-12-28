@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}编辑库存{% else %}新增库存{% endif %} - 医药ERP系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        background-color: #fff;
+        box-sizing: border-box;
+    }
+    .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
+    .btn-cancel, .btn-submit { padding: 0.6rem 1rem; border-radius: 6px; font-weight: 500; text-decoration: none; }
+    .btn-cancel { background: #f1f5f9; color: #0f172a; }
+    .btn-cancel:hover { background: #e2e8f0; }
+    .btn-submit { background: var(--primary-color); color: #fff; border: none; cursor: pointer; }
+    .btn-submit:hover { background: #1d4ed8; }
+    ul.errorlist { list-style: none; padding: 0; margin: 0.25rem 0 0 0; color: var(--danger-color); font-size: 0.875rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / <a href="{% url 'medicine_list' %}">药品库存</a> / {% if is_edit %}编辑库存{% else %}新增库存{% endif %}
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">{% if is_edit %}编辑库存{% else %}新增库存{% endif %}</h1>
+</div>
+
+<div class="form-container">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="{{ form.medicine.id_for_label }}">药品</label>
+                {{ form.medicine }}
+                {{ form.medicine.errors }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.batch_number.id_for_label }}">批号</label>
+                {{ form.batch_number }}
+                {{ form.batch_number.errors }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.expiry_date.id_for_label }}">有效期至</label>
+                {{ form.expiry_date }}
+                {{ form.expiry_date.errors }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.quantity.id_for_label }}">库存数量</label>
+                {{ form.quantity }}
+                {{ form.quantity.errors }}
+            </div>
+        </div>
+        <div class="form-actions">
+            <a href="{% url 'medicine_list' %}" class="btn-cancel">取消</a>
+            <button type="submit" class="btn-submit">保存</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -32,7 +32,7 @@ class Command(BaseCommand):
         # 3. Warehouse (库管员)
         warehouse_perms = [
             # Base - Inventory
-            'base.view_inventory', 'base.change_inventory', # Can update stock counts
+            'base.view_inventory', 'base.add_inventory', 'base.change_inventory',
             'base.view_medicine',
             # Explicitly NO access to Purchase/Sales orders as requested
         ]
