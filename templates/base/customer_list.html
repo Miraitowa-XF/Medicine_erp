@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}客户管理 - 医药ERP系统{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 客户管理
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">客户列表</h1>
+</div>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>客户名称</th>
+                <th>类型</th>
+                <th>联系电话</th>
+                <th>所在城市</th>
+                <th>详细地址</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td>{{ customer.name }}</td>
+                <td>
+                    {% if customer.type == 'wholesale' %}
+                    <span class="status-badge status-warning">批发</span>
+                    {% else %}
+                    <span class="status-badge status-success">零售</span>
+                    {% endif %}
+                </td>
+                <td>{{ customer.phone }}</td>
+                <td>{{ customer.province }} {{ customer.city }}</td>
+                <td>{{ customer.full_address }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无客户记录
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
