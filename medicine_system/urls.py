@@ -19,4 +19,27 @@ from django.urls import path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+<<<<<<< Updated upstream
+=======
+    path('', user_views.index, name='index'),
+    path('login/', user_views.login_view, name='login'),
+    path('logout/', user_views.logout_view, name='logout'),
+    path('change-password/', user_views.change_password, name='change_password'),
+    path('employees/', user_views.employee_list, name='employee_list'),
+    path('employees/<int:pk>/edit/', user_views.employee_edit, name='employee_edit'),
+    path('employees/new/', user_views.employee_create, name='employee_create'),
+    path('employees/<int:pk>/delete/', user_views.employee_delete, name='employee_delete'),
+    path('employees/<int:pk>/password/', user_views.employee_password, name='employee_password'),
+    
+    # 业务模块路由
+    path('medicine/', base_views.medicine_list, name='medicine_list'),
+    path('inventory/<int:pk>/adjust/', base_views.inventory_adjust, name='inventory_adjust'),
+    path('inventory/new/', base_views.inventory_create, name='inventory_create'),
+    path('inventory/<int:pk>/edit/', base_views.inventory_edit, name='inventory_edit'),
+    path('medicine-info/', base_views.medicine_info_list, name='medicine_info_list'),
+    path('customer/', base_views.customer_list, name='customer_list'),
+    path('purchase/', biz_views.purchase_list, name='purchase_list'),
+    path('sales/', biz_views.sales_list, name='sales_list'),
+    path('finance-report/', biz_views.finance_report, name='finance_report'),
+>>>>>>> Stashed changes
 ]
