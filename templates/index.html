@@ -219,11 +219,19 @@
         <p class="card-desc">维护客户档案，记录销售流水</p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
+    <a href="{% url 'sales_list' %}" class="card">
+        <div class="card-icon-wrapper icon-green">
+            <i class="fa-solid fa-shopping-cart"></i>
+        </div>
+        <h3 class="card-title">销售订单</h3>
+        <p class="card-desc">创建销售订单，查询历史销售记录</p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
     {% endif %}
 
     <!-- 财务可见 -->
     {% if user.position == 'finance' or user.position == 'manager' %}
-    <a href="#" class="card">
+    <a href="{% url 'finance_report' %}" class="card">
         <div class="card-icon-wrapper icon-purple">
             <i class="fa-solid fa-chart-line"></i>
         </div>
