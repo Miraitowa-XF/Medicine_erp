@@ -9,6 +9,10 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from .models import PurchaseOrder
+from .models import PurchaseOrder, SalesOrder
+from django.db.models import Sum, Count
+from django.utils import timezone
+from datetime import timedelta
 
 @login_required
 def purchase_list(request):
