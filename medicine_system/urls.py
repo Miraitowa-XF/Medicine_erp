@@ -16,11 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from users import views as user_views
+from base import views as base_views
+from biz import views as biz_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-<<<<<<< Updated upstream
-=======
     path('', user_views.index, name='index'),
     path('login/', user_views.login_view, name='login'),
     path('logout/', user_views.logout_view, name='logout'),
@@ -39,7 +40,7 @@ urlpatterns = [
     path('medicine-info/', base_views.medicine_info_list, name='medicine_info_list'),
     path('customer/', base_views.customer_list, name='customer_list'),
     path('purchase/', biz_views.purchase_list, name='purchase_list'),
+
     path('sales/', biz_views.sales_list, name='sales_list'),
     path('finance-report/', biz_views.finance_report, name='finance_report'),
->>>>>>> Stashed changes
 ]

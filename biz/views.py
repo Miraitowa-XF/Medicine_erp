@@ -1,13 +1,14 @@
 from django.shortcuts import render
-<<<<<<< Updated upstream
 
 # Create your views here.
-=======
+
 from django.contrib.auth.decorators import login_required
 from .models import PurchaseOrder, SalesOrder
 from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.decorators import login_required
+from .models import PurchaseOrder
 
 @login_required
 def purchase_list(request):
@@ -59,4 +60,3 @@ def finance_report(request):
         'period': '最近30天',
     }
     return render(request, 'biz/finance_report.html', context)
->>>>>>> Stashed changes

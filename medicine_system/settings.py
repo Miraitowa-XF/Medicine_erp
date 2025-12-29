@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-dovvd6juw_ga=_-7m%^8$a34qj!iuhb1=*p5n-scv#b4i%^46p
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# 测试使用，允许任何 IP 访问。因为是在 Radmin 的加密局域网内，相对安全。
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -59,7 +60,7 @@ ROOT_URLCONF = 'medicine_system.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
