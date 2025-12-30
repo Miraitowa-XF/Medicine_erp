@@ -47,4 +47,10 @@ urlpatterns = [
     path('sales/new/', biz_views.sales_create, name='sales_create'),
     path('sales/<int:pk>/edit/', biz_views.sales_edit, name='sales_edit'),
     path('finance-report/', biz_views.finance_report, name='finance_report'),
+    path('purchase-return/', biz_views.purchase_return_list, name='purchase_return_list'),
+    path('purchase-return/new/', biz_views.purchase_return_create, name='purchase_return_create'),
+    path('purchase-return/<int:pk>/edit/', biz_views.purchase_return_edit, name='purchase_return_edit'),
+    path('sales-return/', biz_views.sales_return_list, name='sales_return_list'),
+    path('sales-return/new/', biz_views.sales_return_create, name='sales_return_create'),
+    path('sales-return/<int:pk>/edit/', biz_views.sales_return_edit, name='sales_return_edit'),
 ]

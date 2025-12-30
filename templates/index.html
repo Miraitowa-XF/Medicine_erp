@@ -177,6 +177,42 @@
     </a>
     {% endif %}
 
+    <!-- 供应商管理: 采购员, 经理, 财务(查看) -->
+    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'finance' %}
+    <a href="{% url 'supplier_list' %}" class="card">
+        <div class="card-icon-wrapper icon-orange">
+            <i class="fa-solid fa-truck"></i>
+        </div>
+        <h3 class="card-title">供应商管理</h3>
+        <p class="card-desc">
+            {% if user.position == 'finance' %}
+            查看供应商信息
+            {% else %}
+            维护供应商信息
+            {% endif %}
+        </p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
+    <!-- 客户管理: 销售员, 经理, 财务(查看) -->
+    {% if user.position == 'sales' or user.position == 'manager' or user.position == 'finance' %}
+    <a href="{% url 'customer_list' %}" class="card">
+        <div class="card-icon-wrapper icon-red">
+            <i class="fa-solid fa-handshake"></i>
+        </div>
+        <h3 class="card-title">客户管理</h3>
+        <p class="card-desc">
+            {% if user.position == 'finance' %}
+            查看客户档案
+            {% else %}
+            维护客户档案，记录销售流水
+            {% endif %}
+        </p>
+        <i class="fa-solid fa-arrow-right arrow-icon"></i>
+    </a>
+    {% endif %}
+
     <!-- 采购订单: 采购员, 经理, 销售(编辑), 财务(查看) -->
     {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'sales' or user.position == 'finance' %}
     <a href="{% url 'purchase_list' %}" class="card">
@@ -195,23 +231,19 @@
     </a>
     {% endif %}
     
-    <!-- 供应商管理: 采购员, 经理, 财务(查看) -->
-    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'finance' %}
-    <a href="{% url 'supplier_list' %}" class="card">
-        <div class="card-icon-wrapper icon-orange">
-            <i class="fa-solid fa-truck"></i>
+    <!-- 采购退货: 经理 -->
+    {% if user.position == 'manager'%}
+    <a href="{% url 'purchase_return_list' %}" class="card">
+        <div class="card-icon-wrapper icon-red">
+            <i class="fa-solid fa-cart-shopping"></i>
         </div>
-        <h3 class="card-title">供应商管理</h3>
-        <p class="card-desc">
-            {% if user.position == 'finance' %}
-            查看供应商信息
-            {% else %}
-            维护供应商信息
-            {% endif %}
-        </p>
+        <h3 class="card-title">采购退货</h3>
+        <p class="card-desc">管理采购退货订单及明细</p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
     {% endif %}
+
+
 
     <!-- 库管员可见 -->
     {% if user.position == 'warehouse' or user.position == 'manager' %}
@@ -250,24 +282,19 @@
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
     {% endif %}
-    
-    <!-- 客户管理: 销售员, 经理, 财务(查看) -->
-    {% if user.position == 'sales' or user.position == 'manager' or user.position == 'finance' %}
-    <a href="{% url 'customer_list' %}" class="card">
+
+    <!-- 销售退货: 经理 -->
+    {% if user.position == 'manager'%}
+    <a href="{% url 'sales_return_list' %}" class="card">
         <div class="card-icon-wrapper icon-red">
-            <i class="fa-solid fa-handshake"></i>
+            <i class="fa-solid fa-shopping-cart"></i>
         </div>
-        <h3 class="card-title">客户管理</h3>
-        <p class="card-desc">
-            {% if user.position == 'finance' %}
-            查看客户档案
-            {% else %}
-            维护客户档案，记录销售流水
-            {% endif %}
-        </p>
+        <h3 class="card-title">销售退货</h3>
+        <p class="card-desc">管理销售退货订单及明细</p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
     {% endif %}
+
 
     <!-- 财务可见 -->
     {% if user.position == 'finance' or user.position == 'manager' %}
