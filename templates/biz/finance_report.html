@@ -124,7 +124,7 @@
                         <td>{{ order.customer.name|truncatechars:10 }}</td>
                         <td class="font-mono">¥{{ order.total_amount }}</td>
                         <td>
-                            {% if order.status == 'completed' %}
+                            {% if order.status == 'approved' %}
                             <span class="dot-status success"></span>
                             {% elif order.status == 'pending' %}
                             <span class="dot-status warning"></span>
@@ -154,7 +154,7 @@
             <div class="chart-bars">
                 {% for item in sales_daily %}
                 <div class="chart-bar-wrapper" title="{{ item.date|date:'Y-m-d' }}: ¥{{ item.amount }}">
-                    <div class="bar sales" style="height: {{ item.pct }}%"></div>
+                    <div class="bar sales" style="--pct: {{ item.pct }}; height: calc(var(--pct) * 1%);"></div>
                     <span class="bar-date">{{ item.date|date:"m/d" }}</span>
                 </div>
                 {% empty %}
@@ -168,7 +168,7 @@
             <div class="chart-bars">
                 {% for item in purchase_daily %}
                 <div class="chart-bar-wrapper" title="{{ item.date|date:'Y-m-d' }}: ¥{{ item.amount }}">
-                    <div class="bar purchase" style="height: {{ item.pct }}%"></div>
+                    <div class="bar purchase" style="--pct: {{ item.pct }}; height: calc(var(--pct) * 1%);"></div>
                     <span class="bar-date">{{ item.date|date:"m/d" }}</span>
                 </div>
                 {% empty %}

@@ -167,12 +167,12 @@ def finance_report(request):
         days = 30
     since = timezone.now() - timedelta(days=days)
     
-    purchase_stats = PurchaseOrder.objects.filter(order_date__gte=since).aggregate(
+    purchase_stats = PurchaseOrder.objects.filter(order_date__gte=since, status='approved').aggregate(
         total_orders=Count('id'),
         total_amount=Sum('total_amount')
     )
     
-    sales_stats = SalesOrder.objects.filter(order_date__gte=since).aggregate(
+    sales_stats = SalesOrder.objects.filter(order_date__gte=since, status='approved').aggregate(
         total_orders=Count('id'),
         total_amount=Sum('total_amount')
     )
@@ -180,14 +180,14 @@ def finance_report(request):
     profit = (sales_stats['total_amount'] or 0) - (purchase_stats['total_amount'] or 0)
     
     purchase_daily_qs = (
-        PurchaseOrder.objects.filter(order_date__gte=since)
+        PurchaseOrder.objects.filter(order_date__gte=since, status='approved')
         .annotate(d=TruncDate('order_date'))
         .values('d')
         .annotate(amount=Sum('total_amount'))
         .order_by('d')
     )
     sales_daily_qs = (
-        SalesOrder.objects.filter(order_date__gte=since)
+        SalesOrder.objects.filter(order_date__gte=since, status='approved')
         .annotate(d=TruncDate('order_date'))
         .values('d')
         .annotate(amount=Sum('total_amount'))
@@ -202,8 +202,8 @@ def finance_report(request):
         x['pct'] = int((x['amount'] / max_amount) * 100)
     
     # 最近的采购和销售记录（各取前5条）
-    recent_purchases = PurchaseOrder.objects.select_related('supplier').order_by('-order_date')[:5]
-    recent_sales = SalesOrder.objects.select_related('customer').order_by('-order_date')[:5]
+    recent_purchases = PurchaseOrder.objects.select_related('supplier').filter(status='approved').order_by('-order_date')[:5]
+    recent_sales = SalesOrder.objects.select_related('customer').filter(status='approved').order_by('-order_date')[:5]
 
     context = {
         'purchase_stats': purchase_stats,
