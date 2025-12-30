@@ -40,46 +40,54 @@ def _safe_add_inventory(detail_item):
     """
     【并发安全】增加库存
     适用：进货、销售退货
-    原理：使用 select_for_update 锁定行 + F表达式更新
+    修复：自动兼容 PurchaseDetail (直连药品) 和 SalesReturnDetail (连接库存)
     """
-    # 必须在事务内使用锁
+    # 1. 动态获取 Medicine 和 BatchNumber
+    # 如果是 SalesReturnDetail，它有 inventory 外键
+    if hasattr(detail_item, 'inventory') and detail_item.inventory:
+        target_medicine = detail_item.inventory.medicine
+        # 优先用明细里记录的批号（如果有），否则用库存对象的批号
+        target_batch = getattr(detail_item, 'batch_number', detail_item.inventory.batch_number)
+        # 对于退货，有效期通常沿用原库存的
+        target_expiry = detail_item.inventory.expiry_date
+    
+    # 如果是 PurchaseDetail，它直接有 medicine 外键
+    elif hasattr(detail_item, 'medicine'):
+        target_medicine = detail_item.medicine
+        target_batch = detail_item.batch_number
+        # 进货必须有有效期
+        target_expiry = getattr(detail_item, 'expiry_date', timezone.now().date())
+    
+    else:
+        raise ValueError(f"未知明细类型: {type(detail_item)}，无法获取药品信息")
+
+    # 2. 开始事务逻辑
     with transaction.atomic():
-        # 1. 尝试获取锁。我们不能直接用 get_or_create，因为它无法在 get 时加锁
-        # 先尝试查询并锁定
+        # 尝试查询并锁定
         inventory_qs = Inventory.objects.select_for_update().filter(
-            medicine=detail_item.medicine,
-            batch_number=detail_item.batch_number
+            medicine=target_medicine,
+            batch_number=target_batch
         )
         
         if inventory_qs.exists():
-            # 如果存在，这行记录现在被锁住了，其他线程无法修改，直到我这里事务结束
             inventory = inventory_qs.first()
         else:
-            # 如果不存在，创建新记录
-            # 这里的 expiry_date 处理是为了兼容销售退货（明细里可能没有效期字段）
-            expiry = getattr(detail_item, 'expiry_date', None)
-            if not expiry:
-                # 如果是退货且没有效期，尝试去 Medicine 或设默认值（视业务逻辑而定，这里简化处理）
-                expiry = timezone.now().date()
-
+            # 如果不存在（比如新进货，或者库存被物理删除后退货回来），创建新记录
             inventory = Inventory.objects.create(
-                medicine=detail_item.medicine,
-                batch_number=detail_item.batch_number,
-                expiry_date=expiry,
+                medicine=target_medicine,
+                batch_number=target_batch,
+                expiry_date=target_expiry,
                 quantity=0
             )
-            # 重新加锁读取，确保万无一失
+            # 重新加锁读取
             inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
         
-        # 2. 使用 F 表达式进行数据库层面的原子加法
-        # 即使锁失效（极低概率），F() 也能保证是在当前数据库值基础上 +n
+        # 3. 原子加法
         inventory.quantity = F('quantity') + detail_item.quantity
         inventory.save()
         
-        # 刷新对象以获取更新后的数值用于打印
         inventory.refresh_from_db()
-        print(f"【并发安全加】{inventory.medicine.common_name} [{inventory.batch_number}] 库存变为: {inventory.quantity}")
-
+        print(f"【并发安全加】{target_medicine.common_name} [{target_batch}] 库存变为: {inventory.quantity}")
 
 def _safe_deduct_inventory(detail_item):
     """
