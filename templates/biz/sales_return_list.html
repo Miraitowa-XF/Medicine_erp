@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}销售退货 - 医药ERP系统{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 销售退货
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">销售退货列表</h1>
+    {% if can_edit %}
+    <a href="{% url 'sales_return_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> 新建退货单
+    </a>
+    {% endif %}
+</div>
+
+<!-- 搜索表单 -->
+<form method="get" class="filter-form" style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <input type="text" name="search" placeholder="搜索单号、客户、药品" value="{{ search_query }}" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; min-width: 250px;">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'sales_return_list' %}" class="btn btn-secondary" style="color: #64748b; text-decoration: none; padding: 0.5rem 1rem;">重置</a>
+</form>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>单据编号</th>
+                <th>客户</th>
+                <th>退货日期</th>
+                <th>药品名称</th>
+                <th>数量</th>
+                <th>退款总额</th>
+                <th>经办人</th>
+                <th>状态</th>
+                {% if can_edit %}
+                <th>操作</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>SR-{{ order.id }}</td>
+                <td>{{ order.customer.name }}</td>
+                <td>{{ order.return_date|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+                        {% for detail in order.details.all %}
+                        <li>{{ detail.inventory.medicine.common_name }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+                        {% for detail in order.details.all %}
+                        <li>{{ detail.quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>¥{{ order.total_amount }}</td>
+                <td>{{ order.employee.real_name|default:order.employee.username }}</td>
+                <td>
+                    {% if order.status == 'approved' %}
+                    <span class="status-badge status-success">{{ order.get_status_display }}</span>
+                    {% elif order.status == 'pending' %}
+                    <span class="status-badge status-warning">{{ order.get_status_display }}</span>
+                    {% else %}
+                    <span class="status-badge status-danger">{{ order.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                {% if can_edit %}
+                <td>
+                    <a href="{% url 'sales_return_edit' order.pk %}" class="btn-link">编辑</a>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if can_edit %}9{% else %}8{% endif %}" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无销售退货单
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .btn-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .btn-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
