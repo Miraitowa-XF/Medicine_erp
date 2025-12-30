@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}财务报表 - 医药ERP系统{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 财务报表
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">财务报表</h1>
+    <p class="page-subtitle">{{ period }}的财务概况</p>
+</div>
+
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- 采购统计卡片 -->
+    <div class="card">
+        <div class="card-icon-wrapper icon-green">
+            <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <h3 class="card-title">采购统计</h3>
+        <div class="stat-value">¥{{ purchase_stats.total_amount|default:0|floatformat:2 }}</div>
+        <p class="card-desc">{{ purchase_stats.total_orders|default:0 }} 个订单</p>
+    </div>
+
+    <!-- 销售统计卡片 -->
+    <div class="card">
+        <div class="card-icon-wrapper icon-blue">
+            <i class="fa-solid fa-shopping-cart"></i>
+        </div>
+        <h3 class="card-title">销售统计</h3>
+        <div class="stat-value">¥{{ sales_stats.total_amount|default:0|floatformat:2 }}</div>
+        <p class="card-desc">{{ sales_stats.total_orders|default:0 }} 个订单</p>
+    </div>
+
+    <!-- 利润统计卡片 -->
+    <div class="card">
+        <div class="card-icon-wrapper icon-purple">
+            <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <h3 class="card-title">利润统计</h3>
+        <div class="stat-value {% if profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+            ¥{{ profit|floatformat:2 }}
+        </div>
+        <p class="card-desc">销售收入减去采购成本</p>
+    </div>
+</div>
+
+<style>
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0.5rem 0;
+}
+
+.text-success {
+    color: var(--success-color);
+}
+
+.text-danger {
+    color: var(--danger-color);
+}
+</style>
+{% endblock %}

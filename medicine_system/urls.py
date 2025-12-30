@@ -39,5 +39,12 @@ urlpatterns = [
     path('inventory/<int:pk>/edit/', base_views.inventory_edit, name='inventory_edit'),
     path('medicine-info/', base_views.medicine_info_list, name='medicine_info_list'),
     path('customer/', base_views.customer_list, name='customer_list'),
+    path('supplier/', base_views.supplier_list, name='supplier_list'),
     path('purchase/', biz_views.purchase_list, name='purchase_list'),
+    path('purchase/new/', biz_views.purchase_create, name='purchase_create'),
+    path('purchase/<int:pk>/edit/', biz_views.purchase_edit, name='purchase_edit'),
+    path('sales/', biz_views.sales_list, name='sales_list'),
+    path('sales/new/', biz_views.sales_create, name='sales_create'),
+    path('sales/<int:pk>/edit/', biz_views.sales_edit, name='sales_edit'),
+    path('finance-report/', biz_views.finance_report, name='finance_report'),
 ]
