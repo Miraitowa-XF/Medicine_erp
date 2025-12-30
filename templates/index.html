@@ -255,12 +255,20 @@
         <p class="card-desc">实时查询药品库存、效期及入库盘点</p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
+    {% endif %}
+    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'warehouse' or user.position == 'sales' %}
     <a href="{% url 'medicine_info_list' %}" class="card">
         <div class="card-icon-wrapper icon-blue">
             <i class="fa-solid fa-pills"></i>
         </div>
         <h3 class="card-title">药品信息</h3>
-        <p class="card-desc">查看药品基础信息（无编辑权限）</p>
+        <p class="card-desc">
+            {% if user.position == 'purchaser' %}
+            查看药品基础信息并新增药品
+            {% else %}
+            查看药品基础信息
+            {% endif %}
+        </p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
     {% endif %}
