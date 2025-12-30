@@ -1,10 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import PurchaseOrder, SalesOrder
-from .forms import PurchaseOrderForm, SalesOrderForm, PurchaseDetailFormSet, SalesDetailFormSet
-from django.db.models import Sum, Count, Q
-from django.db.models.functions import TruncDate
+from .models import (
+    PurchaseOrder, SalesOrder,
+    PurchaseReturnOrder, SalesReturnOrder
+)
+from .forms import (
+    PurchaseOrderForm, SalesOrderForm, PurchaseDetailFormSet, SalesDetailFormSet,
+    PurchaseReturnOrderForm, SalesReturnOrderForm, PurchaseReturnDetailFormSet, SalesReturnDetailFormSet
+)
+from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
 
@@ -12,6 +17,10 @@ from datetime import timedelta
 def can_manage_orders(user):
     # Salesperson can insert/update/modify bills in Purchase Order and Sales Order interfaces
     return user.position in ['sales', 'manager', 'purchaser']
+
+def can_manage_returns(user):
+    # Only manager or superuser can manage returns
+    return user.is_superuser or user.position == 'manager'
 
 def can_view_finance_data(user):
     # Finance can view Purchase Order, Sales Order, Customer and Supplier
@@ -217,3 +226,148 @@ def finance_report(request):
         'recent_sales': recent_sales,
     }
     return render(request, 'biz/finance_report.html', context)
+
+# ==========================================
+# 采购退货视图
+# ==========================================
+@login_required
+def purchase_return_list(request):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限访问采购退货模块')
+        return redirect('index')
+        
+    queryset = PurchaseReturnOrder.objects.select_related('supplier', 'employee').prefetch_related('details__inventory__medicine').all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(supplier__name__icontains=search_query) |
+            Q(id__icontains=search_query) |
+            Q(details__inventory__medicine__common_name__icontains=search_query)
+        ).distinct()
+    orders = queryset.order_by('-return_date')
+    
+    context = {
+        'orders': orders,
+        'search_query': search_query,
+        'can_edit': True
+    }
+    return render(request, 'biz/purchase_return_list.html', context)
+
+@login_required
+def purchase_return_create(request):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限创建采购退货单')
+        return redirect('purchase_return_list')
+    
+    if request.method == 'POST':
+        form = PurchaseReturnOrderForm(request.POST)
+        formset = PurchaseReturnDetailFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            order = form.save(commit=False)
+            order.employee = request.user
+            order.save()
+            formset.instance = order
+            formset.save()
+            order.total_amount = sum(item.total_amount for item in order.details.all())
+            order.save()
+            messages.success(request, '采购退货单已创建')
+            return redirect('purchase_return_list')
+    else:
+        form = PurchaseReturnOrderForm()
+        formset = PurchaseReturnDetailFormSet()
+    return render(request, 'biz/purchase_return_form.html', {'form': form, 'formset': formset, 'title': '新建采购退货单'})
+
+@login_required
+def purchase_return_edit(request, pk):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限修改采购退货单')
+        return redirect('purchase_return_list')
+        
+    order = get_object_or_404(PurchaseReturnOrder, pk=pk)
+    if request.method == 'POST':
+        form = PurchaseReturnOrderForm(request.POST, instance=order)
+        formset = PurchaseReturnDetailFormSet(request.POST, instance=order)
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            order.total_amount = sum(item.total_amount for item in order.details.all())
+            order.save()
+            messages.success(request, '采购退货单已更新')
+            return redirect('purchase_return_list')
+    else:
+        form = PurchaseReturnOrderForm(instance=order)
+        formset = PurchaseReturnDetailFormSet(instance=order)
+    return render(request, 'biz/purchase_return_form.html', {'form': form, 'formset': formset, 'title': '编辑采购退货单', 'order': order})
+
+# ==========================================
+# 销售退货视图
+# ==========================================
+@login_required
+def sales_return_list(request):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限访问销售退货模块')
+        return redirect('index')
+        
+    queryset = SalesReturnOrder.objects.select_related('customer', 'employee').prefetch_related('details__inventory__medicine').all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(customer__name__icontains=search_query) |
+            Q(id__icontains=search_query) |
+            Q(details__inventory__medicine__common_name__icontains=search_query)
+        ).distinct()
+    orders = queryset.order_by('-return_date')
+    
+    context = {
+        'orders': orders,
+        'search_query': search_query,
+        'can_edit': True
+    }
+    return render(request, 'biz/sales_return_list.html', context)
+
+@login_required
+def sales_return_create(request):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限创建销售退货单')
+        return redirect('sales_return_list')
+    
+    if request.method == 'POST':
+        form = SalesReturnOrderForm(request.POST)
+        formset = SalesReturnDetailFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            order = form.save(commit=False)
+            order.employee = request.user
+            order.save()
+            formset.instance = order
+            formset.save()
+            order.total_amount = sum(item.total_amount for item in order.details.all())
+            order.save()
+            messages.success(request, '销售退货单已创建')
+            return redirect('sales_return_list')
+    else:
+        form = SalesReturnOrderForm()
+        formset = SalesReturnDetailFormSet()
+    return render(request, 'biz/sales_return_form.html', {'form': form, 'formset': formset, 'title': '新建销售退货单'})
+
+@login_required
+def sales_return_edit(request, pk):
+    if not can_manage_returns(request.user):
+        messages.error(request, '无权限修改销售退货单')
+        return redirect('sales_return_list')
+        
+    order = get_object_or_404(SalesReturnOrder, pk=pk)
+    if request.method == 'POST':
+        form = SalesReturnOrderForm(request.POST, instance=order)
+        formset = SalesReturnDetailFormSet(request.POST, instance=order)
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            order.total_amount = sum(item.total_amount for item in order.details.all())
+            order.save()
+            messages.success(request, '销售退货单已更新')
+            return redirect('sales_return_list')
+    else:
+        form = SalesReturnOrderForm(instance=order)
+        formset = SalesReturnDetailFormSet(instance=order)
+    return render(request, 'biz/sales_return_form.html', {'form': form, 'formset': formset, 'title': '编辑销售退货单', 'order': order})
+
