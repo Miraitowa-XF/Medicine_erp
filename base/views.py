@@ -1,12 +1,8 @@
-
-from django.shortcuts import render
-
-# Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django import forms
-from .models import Inventory, Customer, Medicine
+from .models import Inventory, Customer, Medicine, Supplier
 from django.utils import timezone
 from datetime import timedelta, date
 from django.db import IntegrityError
@@ -203,3 +199,11 @@ def medicine_info_list(request):
     }
     return render(request, 'base/medicine_info_list.html', context)
 
+# 供应商列表视图
+@login_required
+def supplier_list(request):
+    suppliers = Supplier.objects.all().order_by('name')
+    context = {
+        'suppliers': suppliers,
+    }
+    return render(request, 'base/supplier_list.html', context)

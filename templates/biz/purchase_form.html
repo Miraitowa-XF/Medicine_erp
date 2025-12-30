@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - 医药ERP{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ title }}</h2>
+    </div>
+    <div class="card-body">
+        <form method="post" class="form">
+            {% csrf_token %}
+            
+            <!-- 主表单 -->
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="error-message">
+                    {% for error in field.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- 明细表单集 -->
+            <div class="detail-section">
+                <h3>采购明细</h3>
+                {{ formset.management_form }}
+                
+                <div id="formset-container">
+                    {% for form in formset %}
+                    <div class="formset-row">
+                        <div class="row-header">
+                            <span>明细 #{{ forloop.counter }}</span>
+                            {% if formset.can_delete and form.instance.pk %}
+                            <div class="delete-checkbox">
+                                {{ form.DELETE }} <label for="{{ form.DELETE.id_for_label }}">删除</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% for hidden in form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+
+                        <div class="row-grid">
+                            {% for field in form.visible_fields %}
+                            {% if field.name != 'DELETE' %}
+                            <div class="form-group small-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                <div class="error-message">
+                                    {% for error in field.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="add-row" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-plus"></i> 添加明细
+                </button>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{% url 'purchase_list' %}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 空表单模板，用于JS克隆 -->
+<div id="empty-form" style="display:none;">
+    <div class="formset-row">
+        <div class="row-header">
+            <span>新明细</span>
+            <button type="button" class="btn-remove-row text-danger" style="background:none;border:none;cursor:pointer;">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="row-grid">
+            {% for field in formset.empty_form.visible_fields %}
+            {% if field.name != 'DELETE' %}
+            <div class="form-group small-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+    .form-actions {
+        margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+    }
+    .error-message {
+        color: var(--danger-color);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    /* 明细样式 */
+    .detail-section {
+        margin-top: 2rem;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 1.5rem;
+    }
+    .formset-row {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+    .row-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .row-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .small-group {
+        margin-bottom: 0;
+    }
+    .small-group label {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+    }
+    .small-group input, .small-group select {
+        font-size: 0.875rem;
+        padding: 0.4rem;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('formset-container');
+        const addButton = document.getElementById('add-row');
+        const totalForms = document.getElementById('id_details-TOTAL_FORMS');
+        const emptyFormTemplate = document.getElementById('empty-form').innerHTML;
+
+        addButton.addEventListener('click', function() {
+            const formIdx = totalForms.value;
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIdx);
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newFormHtml;
+            const newRow = tempDiv.firstElementChild;
+            
+            container.appendChild(newRow);
+            totalForms.value = parseInt(formIdx) + 1;
+
+            // 绑定删除按钮事件
+            const removeBtn = newRow.querySelector('.btn-remove-row');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    newRow.remove();
+                    // 注意：这里简单移除，不更新索引，Django能处理跳跃的索引
+                    // 但 TOTAL_FORMS 最好只增不减（对于新建行）
+                    // 实际上 Django Formset JS 处理比较复杂，这里简化处理：
+                    // 仅允许移除新添加的行，已存在的行通过勾选删除处理
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
