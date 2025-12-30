@@ -3,7 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import PurchaseOrder, SalesOrder
 from .forms import PurchaseOrderForm, SalesOrderForm, PurchaseDetailFormSet, SalesDetailFormSet
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from datetime import timedelta
 
@@ -19,10 +20,19 @@ def can_view_finance_data(user):
 @login_required
 def purchase_list(request):
     """采购订单列表视图"""
-    orders = PurchaseOrder.objects.select_related('supplier', 'employee').prefetch_related('details__medicine').all().order_by('-order_date')
+    queryset = PurchaseOrder.objects.select_related('supplier', 'employee').prefetch_related('details__medicine').all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(supplier__name__icontains=search_query) |
+            Q(id__icontains=search_query) |
+            Q(details__medicine__common_name__icontains=search_query)
+        ).distinct()
+    orders = queryset.order_by('-order_date')
     
     context = {
         'orders': orders,
+        'search_query': search_query,
         'can_edit': can_manage_orders(request.user)
     }
     return render(request, 'biz/purchase_list.html', context)
@@ -78,10 +88,22 @@ def purchase_edit(request, pk):
 @login_required
 def sales_list(request):
     """销售订单列表视图"""
-    orders = SalesOrder.objects.select_related('customer', 'employee').prefetch_related('details__inventory__medicine').all().order_by('-order_date')
+    queryset = SalesOrder.objects.select_related('customer', 'employee').prefetch_related('details__inventory__medicine').all()
+    
+    # Search
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(customer__name__icontains=search_query) |
+            Q(id__icontains=search_query) |
+            Q(details__inventory__medicine__common_name__icontains=search_query)
+        ).distinct()
+
+    orders = queryset.order_by('-order_date')
     
     context = {
         'orders': orders,
+        'search_query': search_query,
         'can_edit': can_manage_orders(request.user)
     }
     return render(request, 'biz/sales_list.html', context)
@@ -137,28 +159,61 @@ def sales_edit(request, pk):
 @login_required
 def finance_report(request):
     """财务报表视图"""
-    # 计算最近30天的统计数据
-    thirty_days_ago = timezone.now() - timedelta(days=30)
+    try:
+        days = int(request.GET.get('days', 30))
+    except Exception:
+        days = 30
+    if days not in [7, 30, 90]:
+        days = 30
+    since = timezone.now() - timedelta(days=days)
     
-    # 采购统计
-    purchase_stats = PurchaseOrder.objects.filter(order_date__gte=thirty_days_ago).aggregate(
+    purchase_stats = PurchaseOrder.objects.filter(order_date__gte=since).aggregate(
         total_orders=Count('id'),
         total_amount=Sum('total_amount')
     )
     
-    # 销售统计
-    sales_stats = SalesOrder.objects.filter(order_date__gte=thirty_days_ago).aggregate(
+    sales_stats = SalesOrder.objects.filter(order_date__gte=since).aggregate(
         total_orders=Count('id'),
         total_amount=Sum('total_amount')
     )
     
-    # 利润计算（简化版：销售总额 - 采购总额）
     profit = (sales_stats['total_amount'] or 0) - (purchase_stats['total_amount'] or 0)
     
+    purchase_daily_qs = (
+        PurchaseOrder.objects.filter(order_date__gte=since)
+        .annotate(d=TruncDate('order_date'))
+        .values('d')
+        .annotate(amount=Sum('total_amount'))
+        .order_by('d')
+    )
+    sales_daily_qs = (
+        SalesOrder.objects.filter(order_date__gte=since)
+        .annotate(d=TruncDate('order_date'))
+        .values('d')
+        .annotate(amount=Sum('total_amount'))
+        .order_by('d')
+    )
+    purchase_daily = [{'date': x['d'], 'amount': x['amount'] or 0} for x in purchase_daily_qs]
+    sales_daily = [{'date': x['d'], 'amount': x['amount'] or 0} for x in sales_daily_qs]
+    max_amount = max([*(y['amount'] for y in purchase_daily), *(y['amount'] for y in sales_daily), 1])
+    for x in purchase_daily:
+        x['pct'] = int((x['amount'] / max_amount) * 100)
+    for x in sales_daily:
+        x['pct'] = int((x['amount'] / max_amount) * 100)
+    
+    # 最近的采购和销售记录（各取前5条）
+    recent_purchases = PurchaseOrder.objects.select_related('supplier').order_by('-order_date')[:5]
+    recent_sales = SalesOrder.objects.select_related('customer').order_by('-order_date')[:5]
+
     context = {
         'purchase_stats': purchase_stats,
         'sales_stats': sales_stats,
         'profit': profit,
-        'period': '最近30天',
+        'period': f'最近{days}天',
+        'days': days,
+        'purchase_daily': purchase_daily,
+        'sales_daily': sales_daily,
+        'recent_purchases': recent_purchases,
+        'recent_sales': recent_sales,
     }
     return render(request, 'biz/finance_report.html', context)

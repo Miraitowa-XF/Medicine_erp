@@ -38,6 +38,11 @@
 
 <div class="page-header">
     <h1 class="page-title">药品基础信息</h1>
+    {% if perms.base.add_medicine %}
+    <a href="{% url 'medicine_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> 新增药品
+    </a>
+    {% endif %}
 </div>
 
 <!-- 搜索和筛选表单 -->

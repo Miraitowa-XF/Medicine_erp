@@ -7,59 +7,308 @@
     <a href="{% url 'index' %}">工作台</a> / 财务报表
 </div>
 
-<div class="page-header">
-    <h1 class="page-title">财务报表</h1>
-    <p class="page-subtitle">{{ period }}的财务概况</p>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1 class="page-title">财务总览</h1>
+        <p class="page-subtitle">关键业务指标与趋势分析</p>
+    </div>
+    <div class="time-range-selector">
+        <a href="?days=7" class="range-btn {% if days == 7 %}active{% endif %}">近7天</a>
+        <a href="?days=30" class="range-btn {% if days == 30 %}active{% endif %}">近30天</a>
+        <a href="?days=90" class="range-btn {% if days == 90 %}active{% endif %}">近90天</a>
+    </div>
 </div>
 
-<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <!-- 采购统计卡片 -->
-    <div class="card">
-        <div class="card-icon-wrapper icon-green">
-            <i class="fa-solid fa-cart-shopping"></i>
+<!-- 核心指标卡片 -->
+<div class="metrics-grid">
+    <!-- 采购总额 -->
+    <div class="metric-card purchase">
+        <div class="metric-icon">
+            <i class="fa-solid fa-cart-arrow-down"></i>
         </div>
-        <h3 class="card-title">采购统计</h3>
-        <div class="stat-value">¥{{ purchase_stats.total_amount|default:0|floatformat:2 }}</div>
-        <p class="card-desc">{{ purchase_stats.total_orders|default:0 }} 个订单</p>
+        <div class="metric-content">
+            <h3 class="metric-label">采购总额</h3>
+            <div class="metric-value">¥{{ purchase_stats.total_amount|default:0|floatformat:2 }}</div>
+            <p class="metric-sub">{{ purchase_stats.total_orders|default:0 }} 笔订单</p>
+        </div>
     </div>
 
-    <!-- 销售统计卡片 -->
-    <div class="card">
-        <div class="card-icon-wrapper icon-blue">
-            <i class="fa-solid fa-shopping-cart"></i>
+    <!-- 销售总额 -->
+    <div class="metric-card sales">
+        <div class="metric-icon">
+            <i class="fa-solid fa-sack-dollar"></i>
         </div>
-        <h3 class="card-title">销售统计</h3>
-        <div class="stat-value">¥{{ sales_stats.total_amount|default:0|floatformat:2 }}</div>
-        <p class="card-desc">{{ sales_stats.total_orders|default:0 }} 个订单</p>
+        <div class="metric-content">
+            <h3 class="metric-label">销售总额</h3>
+            <div class="metric-value">¥{{ sales_stats.total_amount|default:0|floatformat:2 }}</div>
+            <p class="metric-sub">{{ sales_stats.total_orders|default:0 }} 笔订单</p>
+        </div>
     </div>
 
-    <!-- 利润统计卡片 -->
-    <div class="card">
-        <div class="card-icon-wrapper icon-purple">
+    <!-- 净利润 -->
+    <div class="metric-card profit">
+        <div class="metric-icon">
             <i class="fa-solid fa-chart-line"></i>
         </div>
-        <h3 class="card-title">利润统计</h3>
-        <div class="stat-value {% if profit >= 0 %}text-success{% else %}text-danger{% endif %}">
-            ¥{{ profit|floatformat:2 }}
+        <div class="metric-content">
+            <h3 class="metric-label">净利润</h3>
+            <div class="metric-value {% if profit >= 0 %}positive{% else %}negative{% endif %}">
+                ¥{{ profit|floatformat:2 }}
+            </div>
+            <p class="metric-sub">收入 - 成本</p>
         </div>
-        <p class="card-desc">销售收入减去采购成本</p>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- 最近采购记录 -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3 class="panel-title"><i class="fa-solid fa-cart-shopping" style="color: #64748b; margin-right: 0.5rem;"></i> 最近采购记录</h3>
+            <a href="{% url 'purchase_list' %}" class="view-all">查看全部</a>
+        </div>
+        <div class="table-responsive">
+            <table class="simple-table">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>供应商</th>
+                        <th>金额</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_purchases %}
+                    <tr>
+                        <td>{{ order.order_date|date:"m-d H:i" }}</td>
+                        <td>{{ order.supplier.name|truncatechars:10 }}</td>
+                        <td class="font-mono">¥{{ order.total_amount }}</td>
+                        <td>
+                            {% if order.status == 'approved' %}
+                            <span class="dot-status success"></span>
+                            {% elif order.status == 'pending' %}
+                            <span class="dot-status warning"></span>
+                            {% else %}
+                            <span class="dot-status danger"></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-text">暂无记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 最近销售记录 -->
+    <div class="dashboard-panel">
+        <div class="panel-header">
+            <h3 class="panel-title"><i class="fa-solid fa-cash-register" style="color: #64748b; margin-right: 0.5rem;"></i> 最近销售记录</h3>
+            <a href="{% url 'sales_list' %}" class="view-all">查看全部</a>
+        </div>
+        <div class="table-responsive">
+            <table class="simple-table">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>客户</th>
+                        <th>金额</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_sales %}
+                    <tr>
+                        <td>{{ order.order_date|date:"m-d H:i" }}</td>
+                        <td>{{ order.customer.name|truncatechars:10 }}</td>
+                        <td class="font-mono">¥{{ order.total_amount }}</td>
+                        <td>
+                            {% if order.status == 'completed' %}
+                            <span class="dot-status success"></span>
+                            {% elif order.status == 'pending' %}
+                            <span class="dot-status warning"></span>
+                            {% else %}
+                            <span class="dot-status danger"></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-text">暂无记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 每日趋势图表区域 -->
+<div class="dashboard-panel full-width">
+    <div class="panel-header">
+        <h3 class="panel-title">收支趋势 (近{{ days }}天)</h3>
+    </div>
+    <div class="chart-container">
+        <!-- 销售趋势 -->
+        <div class="chart-section">
+            <h4>销售趋势</h4>
+            <div class="chart-bars">
+                {% for item in sales_daily %}
+                <div class="chart-bar-wrapper" title="{{ item.date|date:'Y-m-d' }}: ¥{{ item.amount }}">
+                    <div class="bar sales" style="height: {{ item.pct }}%"></div>
+                    <span class="bar-date">{{ item.date|date:"m/d" }}</span>
+                </div>
+                {% empty %}
+                <div class="empty-chart">暂无数据</div>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- 采购趋势 -->
+        <div class="chart-section">
+            <h4>采购趋势</h4>
+            <div class="chart-bars">
+                {% for item in purchase_daily %}
+                <div class="chart-bar-wrapper" title="{{ item.date|date:'Y-m-d' }}: ¥{{ item.amount }}">
+                    <div class="bar purchase" style="height: {{ item.pct }}%"></div>
+                    <span class="bar-date">{{ item.date|date:"m/d" }}</span>
+                </div>
+                {% empty %}
+                <div class="empty-chart">暂无数据</div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin: 0.5rem 0;
-}
+    :root {
+        --bg-color: #f1f5f9;
+        --card-bg: #ffffff;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --primary-accent: #3b82f6;
+        --success-accent: #10b981;
+        --warning-accent: #f59e0b;
+        --danger-accent: #ef4444;
+        --purchase-color: #f97316; /* Orange for purchase */
+        --sales-color: #3b82f6;    /* Blue for sales */
+    }
 
-.text-success {
-    color: var(--success-color);
-}
+    /* 布局网格 */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
 
-.text-danger {
-    color: var(--danger-color);
-}
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* 核心指标卡片 */
+    .metric-card {
+        background: var(--card-bg);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-icon {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .metric-card.purchase .metric-icon { background: #fff7ed; color: var(--purchase-color); }
+    .metric-card.sales .metric-icon { background: #eff6ff; color: var(--sales-color); }
+    .metric-card.profit .metric-icon { background: #f0fdf4; color: var(--success-accent); }
+
+    .metric-content { flex-grow: 1; }
+    .metric-label { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500; }
+    .metric-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .metric-value.positive { color: var(--success-accent); }
+    .metric-value.negative { color: var(--danger-accent); }
+    .metric-sub { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+    /* 面板样式 */
+    .dashboard-panel {
+        background: var(--card-bg);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .panel-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+
+    .panel-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .view-all { font-size: 0.875rem; color: var(--primary-accent); text-decoration: none; font-weight: 500; }
+    .view-all:hover { text-decoration: underline; }
+
+    /* 表格样式 */
+    .table-responsive { overflow-x: auto; }
+    .simple-table { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
+    .simple-table th { text-align: left; padding: 0.75rem 1.5rem; color: var(--text-secondary); font-weight: 500; border-bottom: 1px solid var(--border-color); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; background: #fff; }
+    .simple-table td { padding: 0.875rem 1.5rem; color: var(--text-primary); border-bottom: 1px solid #f1f5f9; }
+    .simple-table tr:last-child td { border-bottom: none; }
+    .simple-table tr:hover { background-color: #f8fafc; }
+    .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: -0.025em; }
+    .empty-text { text-align: center; color: var(--text-secondary); padding: 2rem; }
+
+    /* 状态点 */
+    .dot-status { display: inline-block; width: 0.625rem; height: 0.625rem; border-radius: 50%; }
+    .dot-status.success { background-color: var(--success-accent); box-shadow: 0 0 0 2px #dcfce7; }
+    .dot-status.warning { background-color: var(--warning-accent); box-shadow: 0 0 0 2px #fef3c7; }
+    .dot-status.danger { background-color: var(--danger-accent); box-shadow: 0 0 0 2px #fee2e2; }
+
+    /* 时间选择器 */
+    .time-range-selector { background: #e2e8f0; padding: 0.25rem; border-radius: 0.5rem; display: inline-flex; }
+    .range-btn { padding: 0.375rem 0.875rem; font-size: 0.875rem; color: var(--text-secondary); text-decoration: none; border-radius: 0.375rem; transition: all 0.2s; font-weight: 500; }
+    .range-btn.active { background: #fff; color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .range-btn:hover:not(.active) { color: var(--text-primary); }
+
+    /* 图表样式 */
+    .full-width { grid-column: 1 / -1; margin-top: 0; }
+    .chart-container { padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .chart-section h4 { margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--text-secondary); text-align: center; }
+    .chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 160px; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+    .chart-bar-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; margin: 0 2px; position: relative; cursor: pointer; }
+    .bar { width: 60%; min-height: 2px; border-radius: 4px 4px 0 0; transition: height 0.3s ease; opacity: 0.8; }
+    .bar:hover { opacity: 1; }
+    .bar.purchase { background: var(--purchase-color); }
+    .bar.sales { background: var(--sales-color); }
+    .bar-date { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.5rem; transform: rotate(-45deg); white-space: nowrap; transform-origin: top left; position: absolute; top: 100%; left: 50%; }
+    .empty-chart { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 0.875rem; background: #f8fafc; border-radius: 0.5rem; }
+
+    @media (max-width: 768px) {
+        .chart-container { grid-template-columns: 1fr; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+    }
 </style>
 {% endblock %}

@@ -16,6 +16,13 @@
     {% endif %}
 </div>
 
+<!-- 搜索表单 -->
+<form method="get" class="filter-form" style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <input type="text" name="search" placeholder="搜索单号、客户、药品" value="{{ search_query }}" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; min-width: 250px;">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'sales_list' %}" class="btn btn-secondary" style="color: #64748b; text-decoration: none; padding: 0.5rem 1rem;">重置</a>
+</form>
+
 <div class="data-table-wrapper">
     <table class="data-table">
         <thead>

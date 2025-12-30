@@ -177,8 +177,8 @@
     </a>
     {% endif %}
 
-    <!-- 采购订单: 采购员, 经理, 销售(编辑), 财务(查看) -->
-    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'sales' or user.position == 'finance' %}
+    <!-- 采购订单: 采购员, 经理, 财务(查看) -->
+    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'finance' %}
     <a href="{% url 'purchase_list' %}" class="card">
         <div class="card-icon-wrapper icon-green">
             <i class="fa-solid fa-cart-shopping"></i>
@@ -213,8 +213,8 @@
     </a>
     {% endif %}
 
-    <!-- 库管员可见 -->
-    {% if user.position == 'warehouse' or user.position == 'manager' %}
+    <!-- 药品相关: 库管员/经理/销售可见库存；采购员/经理/库管员/销售可见药品信息 -->
+    {% if user.position == 'warehouse' or user.position == 'manager' or user.position == 'sales' %}
     <a href="{% url 'medicine_list' %}" class="card">
         <div class="card-icon-wrapper icon-orange">
             <i class="fa-solid fa-boxes-stacked"></i>
@@ -223,12 +223,20 @@
         <p class="card-desc">实时查询药品库存、效期及入库盘点</p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
+    {% endif %}
+    {% if user.position == 'purchaser' or user.position == 'manager' or user.position == 'warehouse' or user.position == 'sales' %}
     <a href="{% url 'medicine_info_list' %}" class="card">
         <div class="card-icon-wrapper icon-blue">
             <i class="fa-solid fa-pills"></i>
         </div>
         <h3 class="card-title">药品信息</h3>
-        <p class="card-desc">查看药品基础信息（无编辑权限）</p>
+        <p class="card-desc">
+            {% if user.position == 'purchaser' %}
+            查看药品基础信息并新增药品
+            {% else %}
+            查看药品基础信息
+            {% endif %}
+        </p>
         <i class="fa-solid fa-arrow-right arrow-icon"></i>
     </a>
     {% endif %}
