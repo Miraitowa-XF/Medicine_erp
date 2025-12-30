@@ -9,7 +9,24 @@
 
 <div class="page-header">
     <h1 class="page-title">客户列表</h1>
+    {% if user.position == 'sales' or user.position == 'manager' or user.is_superuser %}
+    <a href="{% url 'customer_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> 新增客户
+    </a>
+    {% endif %}
 </div>
+
+<!-- 搜索和筛选表单 -->
+<form method="get" class="filter-form" style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <input type="text" name="search" placeholder="搜索客户名、电话、城市" value="{{ search_query }}" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; min-width: 250px;">
+    <select name="type" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+        <option value="">所有类型</option>
+        <option value="wholesale" {% if type_filter == 'wholesale' %}selected{% endif %}>批发</option>
+        <option value="retail" {% if type_filter == 'retail' %}selected{% endif %}>零售</option>
+    </select>
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'customer_list' %}" class="btn btn-secondary" style="color: #64748b; text-decoration: none; padding: 0.5rem 1rem;">重置</a>
+</form>
 
 <div class="data-table-wrapper">
     <table class="data-table">
@@ -20,6 +37,9 @@
                 <th>联系电话</th>
                 <th>所在城市</th>
                 <th>详细地址</th>
+                {% if user.position == 'sales' or user.position == 'manager' or user.is_superuser %}
+                <th>操作</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -36,10 +56,15 @@
                 <td>{{ customer.phone }}</td>
                 <td>{{ customer.province }} {{ customer.city }}</td>
                 <td>{{ customer.full_address }}</td>
+                {% if user.position == 'sales' or user.position == 'manager' or user.is_superuser %}
+                <td>
+                    <a href="{% url 'customer_edit' customer.pk %}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">修改</a>
+                </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" style="text-align: center; color: #64748b; padding: 2rem;">
+                <td colspan="{% if user.position == 'sales' or user.position == 'manager' or user.is_superuser %}6{% else %}5{% endif %}" style="text-align: center; color: #64748b; padding: 2rem;">
                     暂无客户记录
                 </td>
             </tr>
