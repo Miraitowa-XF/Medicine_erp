@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}供应商管理 - 医药ERP系统{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+    <a href="{% url 'index' %}">工作台</a> / 供应商管理
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">供应商列表</h1>
+    {% if perms.base.add_supplier %}
+    <a href="{% url 'supplier_create' %}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> 新增供应商
+    </a>
+    {% endif %}
+</div>
+
+<form method="get" class="filter-form" style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <input type="text" name="search" placeholder="搜索名称、联系人、许可证号、城市" value="{{ search_query }}" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; min-width: 280px;">
+    <button type="submit" class="btn btn-primary">查询</button>
+    <a href="{% url 'supplier_list' %}" class="btn btn-secondary" style="color: #64748b; text-decoration: none; padding: 0.5rem 1rem;">重置</a>
+</form>
+
+<div class="data-table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>供应商名称</th>
+                <th>联系人</th>
+                <th>经营许可证号</th>
+                <th>所在城市</th>
+                <th>详细地址</th>
+                {% if perms.base.change_supplier %}
+                <th>操作</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for supplier in suppliers %}
+            <tr>
+                <td>{{ supplier.name }}</td>
+                <td>{{ supplier.contact_person }}</td>
+                <td>{{ supplier.license_no }}</td>
+                <td>{{ supplier.province }} {{ supplier.city }}</td>
+                <td>{{ supplier.full_address }}</td>
+                {% if perms.base.change_supplier %}
+                <td><a class="btn-link" href="{% url 'supplier_edit' supplier.pk %}">修改</a></td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if perms.base.change_supplier %}6{% else %}5{% endif %}" style="text-align: center; color: #64748b; padding: 2rem;">
+                    暂无供应商记录
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<style>
+    .btn-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .btn-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

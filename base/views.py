@@ -203,3 +203,88 @@ def medicine_info_list(request):
         'max_sell_price': max_sell_price,
     }
     return render(request, 'base/medicine_info_list.html', context)
+
+# 药品新增表单
+class MedicineForm(forms.ModelForm):
+    class Meta:
+        model = Medicine
+        fields = ['common_name', 'specification', 'manufacturer', 'approval_number', 'buy_price', 'sell_price']
+
+# 药品新增视图
+@login_required
+def medicine_create(request):
+    if not request.user.has_perm('base.add_medicine'):
+        messages.error(request, '无权限新增药品')
+        return redirect('medicine_info_list')
+    if request.method == 'POST':
+        form = MedicineForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '药品信息已新增')
+            return redirect('medicine_info_list')
+    else:
+        form = MedicineForm()
+    return render(request, 'base/medicine_form.html', {'form': form})
+
+# 供应商列表视图
+@login_required
+def supplier_list(request):
+    queryset = Supplier.objects.all()
+    search_query = request.GET.get('search', '')
+    if search_query:
+        queryset = queryset.filter(
+            Q(name__icontains=search_query) |
+            Q(contact_person__icontains=search_query) |
+            Q(license_no__icontains=search_query) |
+            Q(province__icontains=search_query) |
+            Q(city__icontains=search_query)
+        )
+    suppliers = queryset.order_by('name')
+    context = {
+        'suppliers': suppliers,
+        'search_query': search_query,
+    }
+    return render(request, 'base/supplier_list.html', context)
+
+# 供应商表单
+class SupplierForm(forms.ModelForm):
+    class Meta:
+        model = Supplier
+        fields = [
+            'name', 'contact_person', 'license_no',
+            'province', 'city', 'district',
+            'street', 'detail_address', 'zip_code'
+        ]
+
+# 新增供应商
+@login_required
+def supplier_create(request):
+    if not request.user.has_perm('base.add_supplier'):
+        messages.error(request, '无权限新增供应商')
+        return redirect('supplier_list')
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '供应商已新增')
+            return redirect('supplier_list')
+    else:
+        form = SupplierForm()
+    return render(request, 'base/supplier_form.html', {'form': form, 'is_edit': False})
+
+# 编辑供应商
+@login_required
+def supplier_edit(request, pk):
+    if not request.user.has_perm('base.change_supplier'):
+        messages.error(request, '无权限修改供应商')
+        return redirect('supplier_list')
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == 'POST':
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '供应商信息已更新')
+            return redirect('supplier_list')
+    else:
+        form = SupplierForm(instance=supplier)
+    return render(request, 'base/supplier_form.html', {'form': form, 'is_edit': True, 'supplier': supplier})
