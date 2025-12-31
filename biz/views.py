@@ -12,6 +12,7 @@ from .forms import (
 from django.db.models import Sum, Count
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models.functions import TruncDate
 
 # Helper to check permissions
 def can_manage_orders(user):
